@@ -14,7 +14,6 @@ This script tests 50+ natural language queries across all categories:
 
 """
 
-import sys
 import time
 from datetime import datetime
 from complete_nlp_delivery_analyzer import CompleteNLPDeliveryAnalyzer

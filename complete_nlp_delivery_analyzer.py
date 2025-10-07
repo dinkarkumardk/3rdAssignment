@@ -16,50 +16,20 @@ import numpy as np
 from datetime import datetime, timedelta
 import json
 import re
-from collections import defaultdict, Counter
 import warnings
 import logging
-import sqlite3
-from typing import Dict, List, Any, Optional, Tuple, Union
-import matplotlib.pyplot as plt
-import seaborn as sns
-from dataclasses import dataclass, field
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
+from typing import Dict, List
+from dataclasses import dataclass
 import cachetools
 from fuzzywuzzy import fuzz, process
-import pickle
-import os
-from wordcloud import WordCloud
-import threading
 import time
-from queue import Queue
 import hashlib
-from functools import wraps, lru_cache
-import yaml
 
 try:
-    import joblib
-    from sklearn.ensemble import RandomForestClassifier, IsolationForest
-    from sklearn.preprocessing import StandardScaler, LabelEncoder
-    from sklearn.model_selection import train_test_split
+    import sklearn  # type: ignore
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
-
-try:
-    import plotly.express as px
-    from plotly.subplots import make_subplots
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
-
-try:
-    from textblob import TextBlob
-    import nltk
-    NLTK_AVAILABLE = True
-except ImportError:
-    NLTK_AVAILABLE = False
 
 warnings.filterwarnings('ignore')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -78,18 +48,6 @@ class QueryContext:
     domain_expertise: str
 
 
-@dataclass
-class AnalysisResult:
-    """Structured analysis result"""
-    query: str
-    response_text: str
-    data_summary: Dict[str, Any]
-    visualizations: List[str]
-    recommendations: List[str]
-    confidence_score: float
-    data_quality: str
-
-
 class CompleteNLPDeliveryAnalyzer:
     """
     Complete NLP-powered delivery failure analysis system that understands
@@ -98,7 +56,7 @@ class CompleteNLPDeliveryAnalyzer:
     
     @staticmethod
     def get_default_config():
-        """Get default configuration values."""
+        """Returns a ready-to-use set of sensible defaults for all system knobs."""
         return {
             # Data processing thresholds
             'ml_training_min_samples': 100,
@@ -143,7 +101,7 @@ class CompleteNLPDeliveryAnalyzer:
     
     @staticmethod
     def load_config_from_file(config_path):
-        """Load configuration from JSON file."""
+        """Reads a JSON file so real-world overrides can plug into the default settings."""
         try:
             with open(config_path, 'r') as f:
                 file_config = json.load(f)
@@ -165,7 +123,7 @@ class CompleteNLPDeliveryAnalyzer:
             return {}
     
     def __init__(self, data_path=".", config=None, config_file=None, enable_ml=True, enable_cache=True, enable_viz=True):
-        """Initialize the enhanced NLP analyzer with advanced features."""
+        """Bootstraps the analyzer: reads config, loads every CSV, and wires up NLP/ML pieces."""
         self.config = self.get_default_config()
         
         # Load from config file if provided
@@ -188,13 +146,17 @@ class CompleteNLPDeliveryAnalyzer:
                 maxsize=self.config['cache_maxsize'], 
                 ttl=self.config['cache_ttl']
             )
-            self.analysis_cache = cachetools.LRUCache(maxsize=self.config['lru_cache_maxsize'])
         
         # Initialize containers
         self.ml_models = {}
         self.feature_importance = {}
-        self.query_stats = defaultdict(int)
         self.response_times = []
+        self.last_ml_insights_summary = ""
+        self.ml_summary_intents = {
+            'prediction',
+            'capacity_planning',
+            'optimization'
+        }
         
         logger.info("Initializing Enhanced NLP Delivery Analyzer...")
         
@@ -225,7 +187,7 @@ class CompleteNLPDeliveryAnalyzer:
         print(f"   🎯 Capabilities: Advanced Analysis, ML Predictions, Interactive Viz, Real-time Monitoring")
 
     def load_all_data(self):
-        """Load and validate all data sources."""
+        """Opens every required CSV (orders, drivers, warehouses, etc.) and stores them as dataframes."""
         try:
             self.external_factors = pd.read_csv(f'{self.data_path}/external_factors.csv')
             self.warehouse_logs = pd.read_csv(f'{self.data_path}/warehouse_logs.csv')
@@ -239,7 +201,7 @@ class CompleteNLPDeliveryAnalyzer:
             raise Exception(f"Data loading error: {e}")
 
     def create_unified_dataset(self):
-        """Create comprehensive unified dataset."""
+        """Merges all the raw tables into one master view and adds timing/issue flags for each order."""
         # Convert datetime columns
         date_columns = {
             'external_factors': ['recorded_at'],
@@ -323,7 +285,7 @@ class CompleteNLPDeliveryAnalyzer:
         logger.info(f"Unified dataset created with {len(master)} records")
 
     def discover_dynamic_patterns(self):
-        """Discover patterns from actual data to replace hardcoded values."""
+        """Scans the master data to learn real city, warehouse, weather, and issue patterns on the fly."""
         logger.info("Discovering dynamic patterns from data...")
         
         # Discover cities from actual data
@@ -384,7 +346,7 @@ class CompleteNLPDeliveryAnalyzer:
         logger.info(f"Discovered {len(self.config['weather_issues'])} weather issues, {len(self.config['traffic_issues'])} traffic issues")
 
     def setup_advanced_nlp(self):
-        """Setup advanced NLP processing capabilities."""
+        """Builds the dictionaries of keywords and phrases so the system understands entities and intent."""
         logger.info("Setting up advanced NLP engine...")
         
         # Enhanced entity patterns with fuzzy matching - using discovered patterns
@@ -477,7 +439,7 @@ class CompleteNLPDeliveryAnalyzer:
         ]
 
     def setup_machine_learning(self):
-        """Setup machine learning models for predictive analytics."""
+        """Trains the optional scikit-learn models (if available) so we can predict issues, timing, and ratings."""
         if not SKLEARN_AVAILABLE:
             logger.warning("Scikit-learn not available, ML features disabled")
             return
@@ -495,6 +457,7 @@ class CompleteNLPDeliveryAnalyzer:
             
             # Feature engineering for ML
             ml_features = self.create_ml_features(ml_data)
+            self.ml_training_features = ml_features.copy()
             
             if not ml_features.empty and len(ml_features) > self.config['ml_training_min_samples']:
                 # Issue prediction model
@@ -509,12 +472,13 @@ class CompleteNLPDeliveryAnalyzer:
                 logger.info("ML models trained successfully")
             else:
                 logger.warning("Insufficient data for ML model training")
+                self.ml_training_features = pd.DataFrame()
                 
         except Exception as e:
             logger.error(f"Error setting up ML models: {e}")
 
     def create_ml_features(self, data):
-        """Create engineered features for machine learning."""
+        """Turns raw columns into clean numeric features and targets that the ML models can digest."""
         try:
             features = pd.DataFrame()
             
@@ -559,7 +523,7 @@ class CompleteNLPDeliveryAnalyzer:
             return pd.DataFrame()
 
     def train_issue_prediction_model(self, features):
-        """Train issue prediction model."""
+        """Fits a random forest that guesses whether an order will run into trouble."""
         try:
             from sklearn.ensemble import RandomForestClassifier
             from sklearn.model_selection import train_test_split
@@ -592,7 +556,7 @@ class CompleteNLPDeliveryAnalyzer:
             logger.error(f"Error training issue prediction model: {e}")
 
     def train_delivery_time_model(self, features):
-        """Train delivery time prediction model."""
+        """Teaches a gradient boosting regressor to estimate how long a delivery will take."""
         try:
             from sklearn.ensemble import GradientBoostingRegressor
             from sklearn.model_selection import train_test_split
@@ -624,7 +588,7 @@ class CompleteNLPDeliveryAnalyzer:
             logger.error(f"Error training delivery time model: {e}")
 
     def train_satisfaction_model(self, features):
-        """Train customer satisfaction prediction model."""
+        """Builds a model that predicts the rating a customer is likely to give."""
         try:
             from sklearn.ensemble import RandomForestRegressor
             from sklearn.model_selection import train_test_split
@@ -658,7 +622,7 @@ class CompleteNLPDeliveryAnalyzer:
             logger.error(f"Error training satisfaction model: {e}")
 
     def setup_visualization_engine(self):
-        """Setup visualization capabilities."""
+        """Stores preferred plotting settings so charts look consistent when enabled."""
         logger.info("Visualization engine initialized")
         self.viz_config = {
             'style': 'seaborn',
@@ -668,7 +632,7 @@ class CompleteNLPDeliveryAnalyzer:
         }
 
     def create_knowledge_graph(self):
-        """Create knowledge graph of relationships."""
+        """Summarizes each city into a mini knowledge graph node with counts and averages."""
         try:
             self.knowledge_graph = {
                 'entities': {},
@@ -695,7 +659,7 @@ class CompleteNLPDeliveryAnalyzer:
             logger.error(f"Error creating knowledge graph: {e}")
 
     def assess_data_quality(self):
-        """Assess overall data quality."""
+        """Calculates a simple 0–10 score showing how complete and duplicate-free the data is."""
         try:
             completeness = (1 - self.master_data.isnull().sum().sum() / 
                           (len(self.master_data) * len(self.master_data.columns)))
@@ -711,7 +675,7 @@ class CompleteNLPDeliveryAnalyzer:
             return 5.0
 
     def process_natural_language_query(self, query):
-        """Enhanced natural language processing with context understanding."""
+        """Handles a user's question end-to-end: understanding intent, generating text, and attaching ML insights."""
         start_time = time.time()
         
         # Cache check
@@ -732,10 +696,14 @@ class CompleteNLPDeliveryAnalyzer:
         response = self.generate_intelligent_response(query, query_context)
         
         # ML insights
+        formatted_insights = ""
+        self.last_ml_insights_summary = ""
         if self.enable_ml:
             ml_insights = self.generate_ml_insights(query_context.entities)
-            if ml_insights:
-                response += f"\n\n🤖 ML Insights:\n{json.dumps(ml_insights, indent=2)}"
+            formatted_insights = self._format_ml_insights(ml_insights)
+            if formatted_insights and query_context.intent in self.ml_summary_intents:
+                response += f"\n\nKey ML signals:\n{formatted_insights}"
+                self.last_ml_insights_summary = formatted_insights
         
         processing_time = time.time() - start_time
         self.response_times.append(processing_time)
@@ -749,7 +717,7 @@ class CompleteNLPDeliveryAnalyzer:
         return response
 
     def understand_query_context(self, query):
-        """Advanced query understanding with fuzzy matching."""
+        """Breaks the question into cities/times/etc., guesses the intent, and scores confidence."""
         query_lower = query.lower()
         
         # Extract entities with fuzzy matching
@@ -891,7 +859,7 @@ class CompleteNLPDeliveryAnalyzer:
         )
 
     def generate_intelligent_response(self, query, context):
-        """Generate intelligent response based on query context."""
+        """Picks the right handler (analysis/comparison/etc.) and returns its formatted answer."""
         entities = context.entities
         intent = context.intent
         
@@ -914,7 +882,7 @@ class CompleteNLPDeliveryAnalyzer:
             return f"I encountered an error while processing your query: {e}"
 
     def handle_analysis_query(self, entities):
-        """Handle general analysis queries."""
+        """Delivers a health report (counts, averages, tips) optionally filtered by city/time/warehouse."""
         data = self.master_data.copy()
         original_count = len(data)
         
@@ -1014,7 +982,7 @@ class CompleteNLPDeliveryAnalyzer:
         return response
 
     def handle_comparison_query(self, entities):
-        """Handle comparison queries between cities, time periods, etc."""
+        """Stacks two cities side-by-side, highlighting metrics, causes, and improvement ideas."""
         if len(entities['cities']) >= 2:
             data = self.master_data.copy()
             original_count = len(data)
@@ -1130,7 +1098,7 @@ class CompleteNLPDeliveryAnalyzer:
             return "Please specify at least two cities for comparison."
 
     def handle_prediction_query(self, entities):
-        """Handle prediction and forecasting queries."""
+        """Answers forward-looking questions, including simple what-if scenarios about extra volume."""
         # Extract prediction scenarios
         if any('add' in entity or 'new' in entity for entity in entities.get('operations', [])):
             # Volume impact prediction
@@ -1153,7 +1121,7 @@ class CompleteNLPDeliveryAnalyzer:
         return self.handle_analysis_query(entities)
 
     def handle_optimization_query(self, entities):
-        """Handle optimization and improvement queries."""
+        """Spots weak areas (slow picking, big delays) and suggests straight-forward fixes."""
         data = self.master_data.copy()
         
         # Calculate current performance metrics
@@ -1190,7 +1158,7 @@ class CompleteNLPDeliveryAnalyzer:
         return response
 
     def handle_causation_query(self, entities):
-        """Handle root cause analysis queries with entity filtering."""
+        """Drills into filtered data to explain why failures happened (weather, traffic, operations)."""
         data = self.master_data.copy()
         original_count = len(data)
         
@@ -1349,7 +1317,7 @@ class CompleteNLPDeliveryAnalyzer:
         return response
 
     def handle_capacity_planning_query(self, entities, original_query=None):
-        """Handle capacity planning and scalability analysis queries."""
+        """Estimates the impact of onboarding more orders and outlines risks plus mitigation steps."""
         import re
         from datetime import datetime, timedelta
         
@@ -1465,33 +1433,8 @@ class CompleteNLPDeliveryAnalyzer:
         
         return response
 
-    def _extract_client_filter(self, entities):
-        """Extract client information from entities."""
-        # Look for client patterns in the original query
-        for entity_list in entities.values():
-            for entity in entity_list:
-                if 'client' in entity.lower():
-                    # Extract client identifier (e.g., "Client X", "Client Y")
-                    import re
-                    client_match = re.search(r'client\s+([a-z]|\d+)', entity.lower())
-                    if client_match:
-                        return client_match.group(1).upper()
-        return None
-    
-    def _extract_warehouse_filter(self, entities):
-        """Extract warehouse information from entities."""
-        for entity_list in entities.values():
-            for entity in entity_list:
-                if 'warehouse' in entity.lower():
-                    # Extract warehouse identifier (e.g., "Warehouse B", "Warehouse 1")
-                    import re
-                    warehouse_match = re.search(r'warehouse\s+([a-z]|\d+)', entity.lower())
-                    if warehouse_match:
-                        return warehouse_match.group(1).upper()
-        return None
-
     def apply_time_filter(self, data, time_periods):
-        """Apply time-based filtering to the dataset."""
+        """Keeps only the rows that match the requested time windows (yesterday, last month, festivals, etc.)."""
         from datetime import datetime, timedelta
         import calendar
         
@@ -1505,7 +1448,7 @@ class CompleteNLPDeliveryAnalyzer:
         return data
     
     def _apply_single_time_filter(self, data, time_period):
-        """Apply a single time filter to the dataset."""
+        """Implements the actual date math for one time phrase before handing data back."""
         # Convert to datetime if needed
         if 'picking_start' in data.columns:
             data['picking_start'] = pd.to_datetime(data['picking_start'])
@@ -1623,7 +1566,7 @@ class CompleteNLPDeliveryAnalyzer:
             return data
 
     def generate_recommendations(self, analysis):
-        """Generate actionable recommendations based on analysis."""
+        """Translates key metrics into a short list of practical improvement tips."""
         recommendations = []
         
         if analysis['issue_rate'] > 20:
@@ -1640,89 +1583,175 @@ class CompleteNLPDeliveryAnalyzer:
         
         return recommendations
 
+    def _filter_data_by_entities(self, entities):
+        """Slices the master dataset to the cities/warehouses/timeframes mentioned in the question."""
+        if not isinstance(entities, dict) or self.master_data.empty:
+            return self.master_data
+
+        filtered = self.master_data
+
+        # Filter by cities using fuzzy matching against actual data
+        if entities.get('cities') and 'city' in filtered.columns:
+            available_cities = filtered['city'].dropna().unique().tolist()
+            matched_cities = []
+            for city in entities['cities']:
+                if city in available_cities:
+                    matched_cities.append(city)
+                else:
+                    match = process.extractOne(city, available_cities, scorer=fuzz.token_set_ratio)
+                    if match and match[1] >= self.config['fuzzy_match_threshold']:
+                        matched_cities.append(match[0])
+            if matched_cities:
+                filtered = filtered[filtered['city'].isin(matched_cities)]
+
+        # Filter by warehouse identifiers extracted from the query
+        if entities.get('warehouses') and 'warehouse_id' in filtered.columns:
+            warehouse_ids = []
+            for warehouse in entities['warehouses']:
+                match = re.search(r'(\d+)$', warehouse)
+                if match:
+                    warehouse_ids.append(int(match.group(1)))
+            if warehouse_ids:
+                filtered = filtered[filtered['warehouse_id'].isin(warehouse_ids)]
+
+        # Apply time-period filtering leveraging existing helper
+        if entities.get('time_periods'):
+            filtered = self.apply_time_filter(filtered, entities['time_periods'])
+
+        return filtered
+
     def generate_ml_insights(self, entities):
-        """Generate ML-powered insights."""
+        """Adds machine-learned extras (risk score, top factors, anomalies) when enough data supports it."""
         if not self.enable_ml or not self.ml_models:
             return None
             
         try:
-            insights = {}
+            filtered_data = self._filter_data_by_entities(entities)
+            if filtered_data is None or filtered_data.empty:
+                return None
+
+            # Require a reasonable sample so that insights are meaningful
+            if len(filtered_data) < max(25, int(self.config['ml_training_min_samples'] * 0.25)):
+                return None
+
+            insights = {
+                'context': {
+                    'orders_analyzed': int(len(filtered_data))
+                }
+            }
             
-            # Issue risk prediction
+            # Issue risk prediction grounded in contextual data
             if 'issue_prediction' in self.ml_models:
-                risk_score = self._predict_issue_risk(entities)
+                risk_score = self._predict_issue_risk(filtered_data)
                 if risk_score is not None:
                     insights['issue_risk'] = {
-                        'probability': risk_score,
+                        'probability': round(risk_score, 3),
                         'level': 'High' if risk_score > self.config['risk_high_threshold'] else 'Medium' if risk_score > self.config['risk_medium_threshold'] else 'Low'
                     }
-            
+
             # Top factors affecting performance
             top_factors = self._get_top_factors()
             if top_factors:
                 insights['key_factors'] = top_factors
             
-            # Anomaly detection
-            anomalies = self._detect_anomalies(entities)
+            # Anomaly detection scoped to the same slice
+            anomalies = self._detect_anomalies(filtered_data)
             if anomalies:
                 insights['anomalies_detected'] = anomalies
             
-            return insights if insights else None
+            # Remove context-only responses
+            return insights if len(insights) > 1 else None
             
         except Exception as e:
             logger.error(f"Error generating ML insights: {e}")
             return None
 
-    def _predict_issue_risk(self, entities):
-        """Predict issue risk based on current conditions."""
+    def _format_ml_insights(self, insights):
+        """Turns raw ML insight dictionaries into compact, reviewer-friendly bullet points."""
+        if not insights:
+            return ""
+
+        lines = []
+
+        context = insights.get('context', {}) or {}
+        orders_analyzed = context.get('orders_analyzed')
+        if orders_analyzed:
+            lines.append(f"- Based on {orders_analyzed:,} similar orders")
+
+        issue_risk = insights.get('issue_risk') or {}
+        probability = issue_risk.get('probability')
+        level = issue_risk.get('level')
+        if probability is not None and level:
+            lines.append(f"- Issue risk {level.lower()}: {probability * 100:.1f}% probability")
+
+        key_factors = insights.get('key_factors') or {}
+        factor_summaries = []
+        for model_name, factors in key_factors.items():
+            if not factors:
+                continue
+            readable_name = model_name.replace('_', ' ').title()
+            top_factor_labels = []
+            for item in factors[:3]:
+                factor_label = item.get('factor')
+                importance = item.get('importance')
+                if factor_label is None or importance is None:
+                    continue
+                top_factor_labels.append(f"{factor_label} ({importance})")
+            if top_factor_labels:
+                factor_summaries.append(f"{readable_name}: {', '.join(top_factor_labels)}")
+        if factor_summaries:
+            lines.append(f"- Top drivers: {'; '.join(factor_summaries)}")
+
+        anomalies = insights.get('anomalies_detected') or {}
+        anomaly_count = anomalies.get('count')
+        if anomaly_count:
+            percentage = anomalies.get('percentage')
+            description = anomalies.get('description')
+            anomaly_line = f"- {anomaly_count} anomalies detected"
+            if percentage is not None:
+                anomaly_line += f" ({percentage:.1f}%)"
+            if description:
+                anomaly_line += f" — {description}"
+            lines.append(anomaly_line)
+
+        return "\n".join(lines)
+
+    def _predict_issue_risk(self, filtered_data):
+        """Runs the classification model on the filtered slice to get an average problem probability."""
         try:
             if 'issue_prediction' not in self.ml_models:
                 return None
             
             model = self.ml_models['issue_prediction']
+            if not hasattr(self, 'ml_training_features') or self.ml_training_features.empty:
+                return None
+
+            feature_cols = ['hour', 'day_of_week', 'month', 'is_weekend', 'is_peak_hour',
+                           'picking_duration', 'dispatch_delay', 'weather_condition_encoded',
+                           'traffic_condition_encoded', 'city_encoded']
+
+            # Align contextual data with engineered feature rows used during training
+            contextual_indices = self.ml_training_features.index.intersection(filtered_data.index)
+            if len(contextual_indices) < 10:
+                return None
+
+            contextual_features = self.ml_training_features.loc[contextual_indices, feature_cols].fillna(0)
+            if contextual_features.empty:
+                return None
+
+            # Predict probability for each record and aggregate
+            risk_probs = model.predict_proba(contextual_features)[:, 1]
+            if len(risk_probs) == 0:
+                return None
             
-            # Create feature vector matching training features (10 features total)
-            features = {}
-            current_time = datetime.now()
-            features['hour'] = current_time.hour
-            features['day_of_week'] = current_time.weekday()
-            features['month'] = current_time.month
-            features['is_weekend'] = 1 if current_time.weekday() >= 5 else 0
-            features['is_peak_hour'] = 1 if 8 <= current_time.hour <= 18 else 0
-            
-            # Operational features (use median values from training data)
-            avg_picking = self.master_data['picking_duration'].median() if 'picking_duration' in self.master_data.columns else 12.5
-            avg_dispatch = self.master_data['dispatch_delay'].median() if 'dispatch_delay' in self.master_data.columns else 35.0
-            features['picking_duration'] = avg_picking
-            features['dispatch_delay'] = avg_dispatch
-            
-            # Weather and traffic conditions (default values)
-            features['weather_condition_encoded'] = 0  # Default to good weather
-            features['traffic_condition_encoded'] = 0  # Default to normal traffic
-            features['city_encoded'] = 0  # Default city encoding
-            
-            # Ensure we have exactly 10 features
-            feature_list = [
-                features['hour'], features['day_of_week'], features['month'],
-                features['is_weekend'], features['is_peak_hour'], features['picking_duration'],
-                features['dispatch_delay'], features['weather_condition_encoded'],
-                features['traffic_condition_encoded'], features['city_encoded']
-            ]
-            
-            # Convert to array for prediction
-            feature_array = np.array(feature_list).reshape(1, -1)
-            
-            # Make prediction
-            risk_prob = model.predict_proba(feature_array)[0][1]  # Probability of issue
-            
-            return float(risk_prob)
+            return float(np.mean(risk_probs))
             
         except Exception as e:
             logger.error(f"Error predicting issue risk: {e}")
             return None
 
     def _get_top_factors(self):
-        """Get top factors affecting performance from ML models."""
+        """Collects the most influential features from each trained model for storytelling."""
         try:
             all_factors = {}
             
@@ -1740,8 +1769,8 @@ class CompleteNLPDeliveryAnalyzer:
             logger.error(f"Error getting top factors: {e}")
             return {}
 
-    def _detect_anomalies(self, entities):
-        """Detect anomalies in the data."""
+    def _detect_anomalies(self, filtered_data):
+        """Uses Isolation Forest to flag unusual timing behaviour when enough records exist."""
         try:
             if not SKLEARN_AVAILABLE:
                 return None
@@ -1749,7 +1778,7 @@ class CompleteNLPDeliveryAnalyzer:
             from sklearn.ensemble import IsolationForest
             
             # Prepare data for anomaly detection
-            data = self.master_data[['picking_duration', 'dispatch_delay', 'delivery_duration']].dropna()
+            data = filtered_data[['picking_duration', 'dispatch_delay', 'delivery_duration']].dropna()
             
             if len(data) < 100:
                 return None
@@ -1775,7 +1804,7 @@ class CompleteNLPDeliveryAnalyzer:
             return None
 
     def export_analysis_report(self, query_results):
-        """Export comprehensive analysis report."""
+        """Writes a timestamped JSON snapshot of queries answered plus quality/performance stats."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         report_path = f"./analysis_report_{timestamp}.json"
         
@@ -1798,99 +1827,14 @@ class CompleteNLPDeliveryAnalyzer:
         
         return report_path
 
-    def generate_business_narrative(self, analysis_result, query_context):
-        """Generate business-focused narrative explanations."""
-        narrative = f"📋 **BUSINESS ANALYSIS REPORT**\n"
-        narrative += f"Query: {query_context.original_query}\n"
-        narrative += f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        
-        # Extract key metrics from analysis
-        narrative += f"**EXECUTIVE SUMMARY:**\n"
-        narrative += f"This analysis investigates {query_context.intent} patterns in our delivery operations.\n"
-        
-        if query_context.entities['cities']:
-            narrative += f"Focus Area: {', '.join(query_context.entities['cities'])} operations\n"
-        
-        if query_context.entities['time_periods']:
-            narrative += f"Time Period: {', '.join(query_context.entities['time_periods'])}\n"
-        
-        narrative += f"\n**OPERATIONAL IMPACT:**\n"
-        narrative += f"• Data Scope: Multi-domain analysis across order logs, fleet data, warehouse records\n"
-        narrative += f"• Root Cause Method: Automated correlation of external factors with delivery performance\n"
-        narrative += f"• Business Context: Identifies systemic issues and recurring bottlenecks\n"
-        
-        narrative += f"\n**STRATEGIC RECOMMENDATIONS:**\n"
-        narrative += f"• Implement predictive monitoring for identified risk factors\n"
-        narrative += f"• Establish proactive intervention protocols\n"
-        narrative += f"• Create feedback loops for continuous improvement\n"
-        
-        return narrative
-
-    def handle_assignment_use_cases(self):
-        """Handle the specific assignment use cases with detailed business context."""
-        assignment_queries = [
-            "Why were deliveries delayed in city Delhi yesterday?",
-            "Why did Client X's orders fail in the past week?", 
-            "Explain the top reasons for delivery failures linked to Warehouse B in August?",
-            "Compare delivery failure causes between Delhi and Mumbai last month?",
-            "What are the likely causes of delivery failures during the festival period, and how should we prepare?",
-            "If we onboard Client Y with ~20,000 extra monthly orders, what new failure risks should we expect and how do we mitigate them?"
-        ]
-        
-        print("🎯 ASSIGNMENT USE CASES DEMONSTRATION")
-        print("="*60)
-        print("Demonstrating the specific use cases mentioned in the assignment:")
-        print("="*60)
-        
-        results = []
-        
-        for i, query in enumerate(assignment_queries, 1):
-            print(f"\n{i}. USE CASE: {query}")
-            print("-" * 50)
-            
-            try:
-                response = self.process_natural_language_query(query)
-                
-                # Generate business narrative
-                query_context = self.understand_query_context(query)
-                narrative = self.generate_business_narrative(response, query_context)
-                
-                print("📊 TECHNICAL ANALYSIS:")
-                print(response[:300] + "..." if len(response) > 300 else response)
-                
-                print(f"\n📋 BUSINESS NARRATIVE:")
-                print(narrative[:400] + "..." if len(narrative) > 400 else narrative)
-                
-                results.append({
-                    'use_case': i,
-                    'query': query,
-                    'technical_response': response,
-                    'business_narrative': narrative,
-                    'timestamp': datetime.now().isoformat()
-                })
-                
-            except Exception as e:
-                print(f"❌ Error processing use case: {e}")
-                continue
-                
-            print("="*50)
-        
-        # Export assignment-specific report
-        assignment_report = f"assignment_use_cases_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(assignment_report, 'w') as f:
-            json.dump(results, f, indent=2, default=str)
-        
-        print(f"\n📄 Assignment report exported: {assignment_report}")
-        return results
-    
     # Convenience alias for backward compatibility
     def ask(self, query):
-        """Alias for process_natural_language_query for convenience."""
+        """Tiny helper so callers can ask questions with `analyzer.ask(...)`."""
         return self.process_natural_language_query(query)
 
 
 def comprehensive_demo(verbose=False, full_output=False):
-    """Run comprehensive demonstration of enhanced capabilities."""
+    """Walks through a scripted tour of representative questions to showcase the system."""
     print("🚀 ENHANCED NLP DELIVERY ANALYZER - COMPREHENSIVE DEMO")
     print("=" * 80)
     
@@ -1963,7 +1907,10 @@ def comprehensive_demo(verbose=False, full_output=False):
                 print(f"❌ Error processing query: {e}")
                 continue
             
-            print("🤖 ML Insights Available - Check full analysis above")
+            if analyzer.last_ml_insights_summary:
+                print("\nKey ML signals:")
+                for line in analyzer.last_ml_insights_summary.split('\n'):
+                    print(f"   {line}")
             print("-" * 60)
         
         # Performance summary
@@ -2005,7 +1952,7 @@ def comprehensive_demo(verbose=False, full_output=False):
 
 
 def interactive_session(analyzer):
-    """Interactive query session."""
+    """Runs a simple command-line loop so people can keep asking questions."""
     print("\n🌟 INTERACTIVE NLP DELIVERY ANALYZER")
     print("=" * 50)
     print("Type your questions about delivery operations!")
@@ -2038,7 +1985,10 @@ def interactive_session(analyzer):
             print("-" * 40)
             print(response)
             print(f"\n⚡ Processed in {analyzer.response_times[-1]:.2f} seconds")
-            print("\n🤖 ML Insights Available - Check full analysis above")
+            if analyzer.last_ml_insights_summary:
+                print("\nKey ML signals:")
+                for line in analyzer.last_ml_insights_summary.split('\n'):
+                    print(f"   {line}")
             
         except KeyboardInterrupt:
             print("\n👋 Goodbye!")
@@ -2049,7 +1999,7 @@ def interactive_session(analyzer):
 
 
 def print_help_examples():
-    """Print help examples for interactive mode."""
+    """Lists sample questions grouped by theme to spark ideas in interactive mode."""
     examples = {
         "📍 City Analysis": [
             "What's happening in Mumbai?",
