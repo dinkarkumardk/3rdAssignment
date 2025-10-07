@@ -1,0 +1,114 @@
+{
+  "timestamp": "20251007_233546",
+  "data_summary": {
+    "total_records": 25255,
+    "data_quality_score": 8.3293472517518,
+    "ml_models_trained": 3
+  },
+  "query_results": [
+    {
+      "query": "What's happening in Mumbai?",
+      "response": "City: Mumbai:\n  \u2022 Total Orders: 936\n  \u2022 Orders with Issues: 775 (82.8%)\n  \u2022 Primary Cause: traffic related\n\nDetailed Cause Breakdown:\n  - Weather Related: 368 (47.5% of issues)\n  - Traffic Related: 379 (48.9% of issues)\n  - Operational Delays: 0 (0.0% of issues)\n\nEvent Correlation:\n  - Unspecified: 326 orders (42.1% of issues)\n  - Holiday: 177 orders (22.8% of issues)\n  - Strike: 146 orders (18.8% of issues)\n\n\ud83d\udd0d Key Insights:\n  \u2022 Traffic congestion is the primary challenge\n  \u2022 82.8% of orders for Mumbai had delivery issues in the analyzed period\n\n\ud83d\udca1 Recommendations:\n  \u2022 Monitor weather forecasts and pre-position inventory\n  \u2022 Optimize delivery routes during peak traffic hours\n  \u2022 Consider alternative delivery time slots\n",
+      "timestamp": "2025-10-07T23:35:38.534730"
+    },
+    {
+      "query": "Why are there so many delivery failures?",
+      "response": "Delivery Analysis:\n  \u2022 Total Orders: 25,255\n  \u2022 Orders with Issues: 20,589 (81.5%)\n  \u2022 Primary Cause: weather related\n\nDetailed Cause Breakdown:\n  - Weather Related: 10,098 (49.0% of issues)\n  - Traffic Related: 10,096 (49.0% of issues)\n  - Operational Delays: 0 (0.0% of issues)\n\nEvent Correlation:\n  - Unspecified: 9,121 orders (44.3% of issues)\n  - Holiday: 4,140 orders (20.1% of issues)\n  - Strike: 3,680 orders (17.9% of issues)\n\n\ud83d\udd0d Key Insights:\n  \u2022 Weather conditions (rain, storms, fog) are the leading cause\n  \u2022 81.5% of orders for the analyzed area had delivery issues in the analyzed period\n\n\ud83d\udca1 Recommendations:\n  \u2022 Monitor weather forecasts and pre-position inventory\n  \u2022 Optimize delivery routes during peak traffic hours\n  \u2022 Consider alternative delivery time slots\n",
+      "timestamp": "2025-10-07T23:35:39.044681"
+    },
+    {
+      "query": "How can we improve our success rate?",
+      "response": "Delivery Analysis: Analysis of 25,255 orders\nKey Metrics:\n  - Total Orders: 25,255\n  - Orders With Issues: 20,589\n  - Issue Rate: 81.52%\n  - Avg Picking Time: 12.55 min\n  - Avg Dispatch Delay: 34.99 min\nRecommendations:\n  - Issue rate is high - implement quality control measures\n  - Streamline dispatch process to reduce delays\n  - Monitor key performance indicators regularly\n  - Implement predictive analytics for better planning\n",
+      "timestamp": "2025-10-07T23:35:39.479216"
+    },
+    {
+      "query": "Compare performance between Delhi and Mumbai",
+      "response": "Delivery Failure Cause Comparison:\n\n\ud83c\udfd9\ufe0f **Mumbai**:\n  \u2022 Total Orders: 936\n  \u2022 Orders with Issues: 775 (82.8%)\n  \u2022 Primary Cause: traffic related\n  \u2022 Cause Breakdown:\n    - Weather Related: 368 (47.5%)\n    - Traffic Related: 379 (48.9%)\n    - Operational Delays: 0 (0.0%)\n  \u2022 Avg Picking Time: 12.50 min\n  \u2022 Avg Dispatch Delay: 35.33 min\n\n\ud83c\udfd9\ufe0f **New Delhi**:\n  \u2022 Total Orders: 3,282\n  \u2022 Orders with Issues: 2,805 (85.5%)\n  \u2022 Primary Cause: traffic related\n  \u2022 Cause Breakdown:\n    - Weather Related: 1305 (46.5%)\n    - Traffic Related: 1322 (47.1%)\n    - Operational Delays: 0 (0.0%)\n  \u2022 Avg Picking Time: 12.51 min\n  \u2022 Avg Dispatch Delay: 34.33 min\n\n\ud83d\udd0d **Comparative Insights**:\n  \u2022 Mumbai has 2.7% lower failure rate than New Delhi\n  \u2022 Both cities share same primary cause: Traffic Related\n\n\ud83d\udca1 **Recommendations**:\n  \u2022 Focus improvement efforts on New Delhi (85.5% failure rate)\n  \u2022 Address traffic related and traffic related causes\n  \u2022 Share best practices from Mumbai with New Delhi\n",
+      "timestamp": "2025-10-07T23:35:39.642408"
+    },
+    {
+      "query": "Which city performs better - Bangalore vs Chennai?",
+      "response": "Please specify at least two cities for comparison.",
+      "timestamp": "2025-10-07T23:35:39.753767"
+    },
+    {
+      "query": "What will happen if we add 30000 new orders?",
+      "response": "\ud83d\udcca **Capacity Planning Analysis: Client Onboarding Impact**\n\n**Current vs. Projected Volume:**\n  \u2022 Current Monthly Volume: 25,255 orders\n  \u2022 Additional Volume (Client Y): 30,000 orders\n  \u2022 Projected Total Volume: 55,255 orders\n  \u2022 Volume Increase: 118.8%\n\n**Risk Assessment & Impact Prediction:**\n  \u2022 Current Issue Rate: 81.5%\n  \u2022 Projected Issue Rate: 95.0% (+13.5%)\n  \u2022 Capacity Utilization: 200%\n  \u2022 System Strain Level: \ud83d\udd34 Critical\n\n**Key Risk Areas:**\n  \ud83c\udfed **Warehouse Operations:** High risk of bottlenecks\n    - Picking time may increase by 30%\n    - Storage capacity may be exceeded\n  \ud83d\ude9b **Fleet & Delivery:** Severe strain expected\n    - Dispatch delays may increase by 40%\n    - Delivery time windows may be missed\n  \ud83d\udcde **Customer Experience:** Service degradation likely\n    - Customer complaints may increase by 17%\n    - Brand reputation at risk\n\n**\ud83d\ude80 Mitigation Strategy:**\n**Infrastructure Scaling:**\n  \u2022 Expand warehouse capacity by 100%\n  \u2022 Add 10 temporary fulfillment centers\n  \u2022 Increase fleet size by 119%\n  \u2022 Scale warehouse staff by 95%\n\n**Operational Readiness:**\n  \u2022 Implement staggered order processing to smooth demand\n  \u2022 Pre-negotiate overflow capacity with 3rd party logistics\n  \u2022 Set up dedicated Client Y processing lanes\n  \u2022 Implement real-time capacity monitoring\n\n**Technology & Process:**\n  \u2022 Upgrade warehouse management system for higher throughput\n  \u2022 Implement predictive analytics for demand forecasting\n  \u2022 Set up automated alerts for capacity thresholds\n  \u2022 Deploy dynamic routing optimization\n\n**\ud83d\udcc5 Implementation Timeline:**\n  \u2022 **Immediate (Week 1-2):** Staff hiring, overflow partnerships\n  \u2022 **Short-term (Month 1):** Technology upgrades, process optimization\n  \u2022 **Medium-term (Month 2-3):** Infrastructure expansion, client onboarding\n  \u2022 **Ongoing:** Performance monitoring and continuous optimization\n\n**\ud83c\udfaf Success Metrics to Monitor:**\n  \u2022 Keep issue rate below 30%\n  \u2022 Maintain picking time under 15 minutes\n  \u2022 Keep dispatch delays under 40 minutes\n  \u2022 Achieve >95% on-time delivery for Client Y orders\n\n\nKey ML signals:\n- Based on 25,255 similar orders\n- Issue risk high: 81.6% probability\n- Top drivers: Issue Prediction: Dispatch Delay (0.212), Hour (0.16), Picking Duration (0.145); Delivery Time: City Encoded (0.288), Dispatch Delay (0.214), Hour (0.129); Satisfaction: Dispatch Delay (0.23), Hour (0.176), Picking Duration (0.157)\n- 1837 anomalies detected (10.0%) \u2014 Operational anomalies detected in timing metrics",
+      "timestamp": "2025-10-07T23:35:40.218321"
+    },
+    {
+      "query": "Predict issues for next week",
+      "response": "Delivery Analysis: Analysis of 25,255 orders\nKey Metrics:\n  - Total Orders: 25,255\n  - Orders With Issues: 20,589\n  - Issue Rate: 81.52%\n  - Avg Picking Time: 12.55 min\n  - Avg Dispatch Delay: 34.99 min\nRecommendations:\n  - Issue rate is high - implement quality control measures\n  - Streamline dispatch process to reduce delays\n  - Monitor key performance indicators regularly\n  - Implement predictive analytics for better planning\n\n\nKey ML signals:\n- Based on 25,255 similar orders\n- Issue risk high: 81.6% probability\n- Top drivers: Issue Prediction: Dispatch Delay (0.212), Hour (0.16), Picking Duration (0.145); Delivery Time: City Encoded (0.288), Dispatch Delay (0.214), Hour (0.129); Satisfaction: Dispatch Delay (0.23), Hour (0.176), Picking Duration (0.157)\n- 1837 anomalies detected (10.0%) \u2014 Operational anomalies detected in timing metrics",
+      "timestamp": "2025-10-07T23:35:40.625433"
+    },
+    {
+      "query": "What's the risk of delays during monsoon?",
+      "response": "Delivery Analysis: Analysis of 25,255 orders\nKey Metrics:\n  - Total Orders: 25,255\n  - Orders With Issues: 20,589\n  - Issue Rate: 81.52%\n  - Avg Picking Time: 12.55 min\n  - Avg Dispatch Delay: 34.99 min\nRecommendations:\n  - Issue rate is high - implement quality control measures\n  - Streamline dispatch process to reduce delays\n  - Monitor key performance indicators regularly\n  - Implement predictive analytics for better planning\n",
+      "timestamp": "2025-10-07T23:35:41.036683"
+    },
+    {
+      "query": "Show me trends over the past month",
+      "response": "Timeframe: Past Month: Analysis of 25,255 orders\nKey Metrics:\n  - Total Orders: 25,255\n  - Orders With Issues: 20,589\n  - Issue Rate: 81.52%\n  - Avg Picking Time: 12.55 min\n  - Avg Dispatch Delay: 34.99 min\nRecommendations:\n  - Issue rate is high - implement quality control measures\n  - Streamline dispatch process to reduce delays\n  - Monitor key performance indicators regularly\n  - Implement predictive analytics for better planning\n",
+      "timestamp": "2025-10-07T23:35:41.466719"
+    },
+    {
+      "query": "Identify anomalies in delivery performance",
+      "response": "Delivery Analysis:\n  \u2022 Total Orders: 25,255\n  \u2022 Orders with Issues: 20,589 (81.5%)\n  \u2022 Primary Cause: weather related\n\nDetailed Cause Breakdown:\n  - Weather Related: 10,098 (49.0% of issues)\n  - Traffic Related: 10,096 (49.0% of issues)\n  - Operational Delays: 0 (0.0% of issues)\n\nEvent Correlation:\n  - Unspecified: 9,121 orders (44.3% of issues)\n  - Holiday: 4,140 orders (20.1% of issues)\n  - Strike: 3,680 orders (17.9% of issues)\n\n\ud83d\udd0d Key Insights:\n  \u2022 Weather conditions (rain, storms, fog) are the leading cause\n  \u2022 81.5% of orders for the analyzed area had delivery issues in the analyzed period\n\n\ud83d\udca1 Recommendations:\n  \u2022 Monitor weather forecasts and pre-position inventory\n  \u2022 Optimize delivery routes during peak traffic hours\n  \u2022 Consider alternative delivery time slots\n",
+      "timestamp": "2025-10-07T23:35:41.884902"
+    },
+    {
+      "query": "What factors influence delivery success most?",
+      "response": "Delivery Analysis:\n  \u2022 Total Orders: 25,255\n  \u2022 Orders with Issues: 20,589 (81.5%)\n  \u2022 Primary Cause: weather related\n\nDetailed Cause Breakdown:\n  - Weather Related: 10,098 (49.0% of issues)\n  - Traffic Related: 10,096 (49.0% of issues)\n  - Operational Delays: 0 (0.0% of issues)\n\nEvent Correlation:\n  - Unspecified: 9,121 orders (44.3% of issues)\n  - Holiday: 4,140 orders (20.1% of issues)\n  - Strike: 3,680 orders (17.9% of issues)\n\n\ud83d\udd0d Key Insights:\n  \u2022 Weather conditions (rain, storms, fog) are the leading cause\n  \u2022 81.5% of orders for the analyzed area had delivery issues in the analyzed period\n\n\ud83d\udca1 Recommendations:\n  \u2022 Monitor weather forecasts and pre-position inventory\n  \u2022 Optimize delivery routes during peak traffic hours\n  \u2022 Consider alternative delivery time slots\n",
+      "timestamp": "2025-10-07T23:35:42.313998"
+    },
+    {
+      "query": "Create a dashboard for Mumbai operations",
+      "response": "City: Mumbai:\n  \u2022 Total Orders: 936\n  \u2022 Orders with Issues: 775 (82.8%)\n  \u2022 Primary Cause: traffic related\n\nDetailed Cause Breakdown:\n  - Weather Related: 368 (47.5% of issues)\n  - Traffic Related: 379 (48.9% of issues)\n  - Operational Delays: 0 (0.0% of issues)\n\nEvent Correlation:\n  - Unspecified: 326 orders (42.1% of issues)\n  - Holiday: 177 orders (22.8% of issues)\n  - Strike: 146 orders (18.8% of issues)\n\n\ud83d\udd0d Key Insights:\n  \u2022 Traffic congestion is the primary challenge\n  \u2022 82.8% of orders for Mumbai had delivery issues in the analyzed period\n\n\ud83d\udca1 Recommendations:\n  \u2022 Monitor weather forecasts and pre-position inventory\n  \u2022 Optimize delivery routes during peak traffic hours\n  \u2022 Consider alternative delivery time slots\n",
+      "timestamp": "2025-10-07T23:35:42.405885"
+    },
+    {
+      "query": "Show me a trend chart for issue rates",
+      "response": "Delivery Analysis: Analysis of 25,255 orders\nKey Metrics:\n  - Total Orders: 25,255\n  - Orders With Issues: 20,589\n  - Issue Rate: 81.52%\n  - Avg Picking Time: 12.55 min\n  - Avg Dispatch Delay: 34.99 min\nRecommendations:\n  - Issue rate is high - implement quality control measures\n  - Streamline dispatch process to reduce delays\n  - Monitor key performance indicators regularly\n  - Implement predictive analytics for better planning\n",
+      "timestamp": "2025-10-07T23:35:42.982817"
+    },
+    {
+      "query": "Generate comparison charts between cities",
+      "response": "Please specify at least two cities for comparison.",
+      "timestamp": "2025-10-07T23:35:43.414547"
+    },
+    {
+      "query": "Analyze warehouse capacity utilization",
+      "response": "\ud83d\udcca **Capacity Planning Analysis: Client Onboarding Impact**\n\n**Current vs. Projected Volume:**\n  \u2022 Current Monthly Volume: 25,255 orders\n  \u2022 Additional Volume (Client Y): 20,000 orders\n  \u2022 Projected Total Volume: 45,255 orders\n  \u2022 Volume Increase: 79.2%\n\n**Risk Assessment & Impact Prediction:**\n  \u2022 Current Issue Rate: 81.5%\n  \u2022 Projected Issue Rate: 95.0% (+13.5%)\n  \u2022 Capacity Utilization: 179%\n  \u2022 System Strain Level: \ud83d\udd34 Critical\n\n**Key Risk Areas:**\n  \ud83c\udfed **Warehouse Operations:** High risk of bottlenecks\n    - Picking time may increase by 24%\n    - Storage capacity may be exceeded\n  \ud83d\ude9b **Fleet & Delivery:** Severe strain expected\n    - Dispatch delays may increase by 32%\n    - Delivery time windows may be missed\n  \ud83d\udcde **Customer Experience:** Service degradation likely\n    - Customer complaints may increase by 17%\n    - Brand reputation at risk\n\n**\ud83d\ude80 Mitigation Strategy:**\n**Infrastructure Scaling:**\n  \u2022 Expand warehouse capacity by 79%\n  \u2022 Add 7 temporary fulfillment centers\n  \u2022 Increase fleet size by 79%\n  \u2022 Scale warehouse staff by 63%\n\n**Operational Readiness:**\n  \u2022 Implement staggered order processing to smooth demand\n  \u2022 Pre-negotiate overflow capacity with 3rd party logistics\n  \u2022 Set up dedicated Client Y processing lanes\n  \u2022 Implement real-time capacity monitoring\n\n**Technology & Process:**\n  \u2022 Upgrade warehouse management system for higher throughput\n  \u2022 Implement predictive analytics for demand forecasting\n  \u2022 Set up automated alerts for capacity thresholds\n  \u2022 Deploy dynamic routing optimization\n\n**\ud83d\udcc5 Implementation Timeline:**\n  \u2022 **Immediate (Week 1-2):** Staff hiring, overflow partnerships\n  \u2022 **Short-term (Month 1):** Technology upgrades, process optimization\n  \u2022 **Medium-term (Month 2-3):** Infrastructure expansion, client onboarding\n  \u2022 **Ongoing:** Performance monitoring and continuous optimization\n\n**\ud83c\udfaf Success Metrics to Monitor:**\n  \u2022 Keep issue rate below 30%\n  \u2022 Maintain picking time under 15 minutes\n  \u2022 Keep dispatch delays under 40 minutes\n  \u2022 Achieve >95% on-time delivery for Client Y orders\n\n\nKey ML signals:\n- Based on 25,255 similar orders\n- Issue risk high: 81.6% probability\n- Top drivers: Issue Prediction: Dispatch Delay (0.212), Hour (0.16), Picking Duration (0.145); Delivery Time: City Encoded (0.288), Dispatch Delay (0.214), Hour (0.129); Satisfaction: Dispatch Delay (0.23), Hour (0.176), Picking Duration (0.157)\n- 1837 anomalies detected (10.0%) \u2014 Operational anomalies detected in timing metrics",
+      "timestamp": "2025-10-07T23:35:44.026432"
+    },
+    {
+      "query": "Forecast delivery volumes for Q4",
+      "response": "\ud83d\udcca **Capacity Planning Analysis: Client Onboarding Impact**\n\n**Current vs. Projected Volume:**\n  \u2022 Current Monthly Volume: 25,255 orders\n  \u2022 Additional Volume (Client Y): 20,000 orders\n  \u2022 Projected Total Volume: 45,255 orders\n  \u2022 Volume Increase: 79.2%\n\n**Risk Assessment & Impact Prediction:**\n  \u2022 Current Issue Rate: 81.5%\n  \u2022 Projected Issue Rate: 95.0% (+13.5%)\n  \u2022 Capacity Utilization: 179%\n  \u2022 System Strain Level: \ud83d\udd34 Critical\n\n**Key Risk Areas:**\n  \ud83c\udfed **Warehouse Operations:** High risk of bottlenecks\n    - Picking time may increase by 24%\n    - Storage capacity may be exceeded\n  \ud83d\ude9b **Fleet & Delivery:** Severe strain expected\n    - Dispatch delays may increase by 32%\n    - Delivery time windows may be missed\n  \ud83d\udcde **Customer Experience:** Service degradation likely\n    - Customer complaints may increase by 17%\n    - Brand reputation at risk\n\n**\ud83d\ude80 Mitigation Strategy:**\n**Infrastructure Scaling:**\n  \u2022 Expand warehouse capacity by 79%\n  \u2022 Add 7 temporary fulfillment centers\n  \u2022 Increase fleet size by 79%\n  \u2022 Scale warehouse staff by 63%\n\n**Operational Readiness:**\n  \u2022 Implement staggered order processing to smooth demand\n  \u2022 Pre-negotiate overflow capacity with 3rd party logistics\n  \u2022 Set up dedicated Client Y processing lanes\n  \u2022 Implement real-time capacity monitoring\n\n**Technology & Process:**\n  \u2022 Upgrade warehouse management system for higher throughput\n  \u2022 Implement predictive analytics for demand forecasting\n  \u2022 Set up automated alerts for capacity thresholds\n  \u2022 Deploy dynamic routing optimization\n\n**\ud83d\udcc5 Implementation Timeline:**\n  \u2022 **Immediate (Week 1-2):** Staff hiring, overflow partnerships\n  \u2022 **Short-term (Month 1):** Technology upgrades, process optimization\n  \u2022 **Medium-term (Month 2-3):** Infrastructure expansion, client onboarding\n  \u2022 **Ongoing:** Performance monitoring and continuous optimization\n\n**\ud83c\udfaf Success Metrics to Monitor:**\n  \u2022 Keep issue rate below 30%\n  \u2022 Maintain picking time under 15 minutes\n  \u2022 Keep dispatch delays under 40 minutes\n  \u2022 Achieve >95% on-time delivery for Client Y orders\n\n\nKey ML signals:\n- Based on 25,255 similar orders\n- Issue risk high: 81.6% probability\n- Top drivers: Issue Prediction: Dispatch Delay (0.212), Hour (0.16), Picking Duration (0.145); Delivery Time: City Encoded (0.288), Dispatch Delay (0.214), Hour (0.129); Satisfaction: Dispatch Delay (0.23), Hour (0.176), Picking Duration (0.157)\n- 1837 anomalies detected (10.0%) \u2014 Operational anomalies detected in timing metrics",
+      "timestamp": "2025-10-07T23:35:44.440192"
+    },
+    {
+      "query": "Identify optimization opportunities",
+      "response": "Current Performance Metrics:\n  - Success Rate: 18.48%\n  - Total Orders: 25255.00\n  - Avg Picking Time: 12.55 min\n  - Avg Dispatch Delay: 34.99 min\nImprovement Areas:\n  - Picking time is optimal\n  - Dispatch delay needs attention (>30 min)\nStrategic Recommendations:\n  - Implement predictive analytics for demand forecasting\n  - Optimize warehouse layout and picking routes\n  - Enhance driver training and route optimization\n\n\nKey ML signals:\n- Based on 25,255 similar orders\n- Issue risk high: 81.6% probability\n- Top drivers: Issue Prediction: Dispatch Delay (0.212), Hour (0.16), Picking Duration (0.145); Delivery Time: City Encoded (0.288), Dispatch Delay (0.214), Hour (0.129); Satisfaction: Dispatch Delay (0.23), Hour (0.176), Picking Duration (0.157)\n- 1837 anomalies detected (10.0%) \u2014 Operational anomalies detected in timing metrics",
+      "timestamp": "2025-10-07T23:35:44.839807"
+    },
+    {
+      "query": "Executive summary for board presentation",
+      "response": "Delivery Analysis: Analysis of 25,255 orders\nKey Metrics:\n  - Total Orders: 25,255\n  - Orders With Issues: 20,589\n  - Issue Rate: 81.52%\n  - Avg Picking Time: 12.55 min\n  - Avg Dispatch Delay: 34.99 min\nRecommendations:\n  - Issue rate is high - implement quality control measures\n  - Streamline dispatch process to reduce delays\n  - Monitor key performance indicators regularly\n  - Implement predictive analytics for better planning\n",
+      "timestamp": "2025-10-07T23:35:45.247496"
+    },
+    {
+      "query": "Cost impact analysis of current issues",
+      "response": "Delivery Analysis: Analysis of 25,255 orders\nKey Metrics:\n  - Total Orders: 25,255\n  - Orders With Issues: 20,589\n  - Issue Rate: 81.52%\n  - Avg Picking Time: 12.55 min\n  - Avg Dispatch Delay: 34.99 min\nRecommendations:\n  - Issue rate is high - implement quality control measures\n  - Streamline dispatch process to reduce delays\n  - Monitor key performance indicators regularly\n  - Implement predictive analytics for better planning\n",
+      "timestamp": "2025-10-07T23:35:45.654057"
+    },
+    {
+      "query": "Customer satisfaction correlation with delivery performance",
+      "response": "Delivery Analysis: Analysis of 25,255 orders\nKey Metrics:\n  - Total Orders: 25,255\n  - Orders With Issues: 20,589\n  - Issue Rate: 81.52%\n  - Avg Picking Time: 12.55 min\n  - Avg Dispatch Delay: 34.99 min\nRecommendations:\n  - Issue rate is high - implement quality control measures\n  - Streamline dispatch process to reduce delays\n  - Monitor key performance indicators regularly\n  - Implement predictive analytics for better planning\n",
+      "timestamp": "2025-10-07T23:35:46.072147"
+    }
+  ],
+  "performance_metrics": {
+    "avg_response_time": 0.38238372802734377,
+    "total_queries": 20
+  }
+}

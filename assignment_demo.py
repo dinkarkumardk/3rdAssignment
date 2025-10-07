@@ -40,13 +40,13 @@ def assignment_demonstration():
     assignment_use_cases = [
         {
             'id': 1,
-            'query': 'Why were deliveries delayed in city Delhi yesterday?',
-            'business_context': 'Daily operational review - identifying yesterday\'s delivery issues in Delhi market',
+            'query': 'Why were deliveries delayed in city Delhi last month?',
+            'business_context': 'Daily operational review - identifying last month\'s delivery issues in Delhi market',
             'expected_outcome': 'Root cause analysis linking external factors to delivery delays'
         },
         {
             'id': 2, 
-            'query': 'Why did Client X orders fail in the past week?',
+            'query': 'Why did Client Saini LLC orders fail in the past month?',
             'business_context': 'Client relationship management - investigating specific customer issues',
             'expected_outcome': 'Client-specific failure pattern analysis with corrective actions'
         },
@@ -70,7 +70,7 @@ def assignment_demonstration():
         },
         {
             'id': 6,
-            'query': 'If we onboard Client Y with ~20,000 extra monthly orders, what new failure risks should we expect and how do we mitigate them?',
+            'query': 'If we onboard Client Saini LLC with ~20,000 extra monthly orders, what new failure risks should we expect and how do we mitigate them?',
             'business_context': 'Capacity planning - scaling operations for major client onboarding',
             'expected_outcome': 'Impact assessment with risk mitigation recommendations'
         }
@@ -95,13 +95,10 @@ def assignment_demonstration():
             
             # Generate business insights
             print(f"\n📊 SYSTEM ANALYSIS:")
-            # Show key parts of the response
-            lines = response.split('\n')
-            for line in lines[:8]:  # Show first 8 lines
+            # Show full response for clarity
+            for line in response.split('\n'):
                 if line.strip():
                     print(f"   {line}")
-            if len(lines) > 8:
-                print(f"   ... (analysis continues)")
             
             print(f"\n💡 BUSINESS VALUE:")
             print(f"   ✅ Multi-domain correlation completed in {processing_time:.2f}s")

@@ -157,6 +157,7 @@ class CompleteNLPDeliveryAnalyzer:
             'capacity_planning',
             'optimization'
         }
+        self.client_lookup = {}
         
         logger.info("Initializing Enhanced NLP Delivery Analyzer...")
         
@@ -194,6 +195,7 @@ class CompleteNLPDeliveryAnalyzer:
             self.feedback = pd.read_csv(f'{self.data_path}/feedback.csv')
             self.drivers = pd.read_csv(f'{self.data_path}/drivers.csv')
             self.fleet_logs = pd.read_csv(f'{self.data_path}/fleet_logs.csv')
+            self.orders = pd.read_csv(f'{self.data_path}/orders.csv')
             self.clients = pd.read_csv(f'{self.data_path}/clients.csv')
             self.warehouses = pd.read_csv(f'{self.data_path}/warehouses.csv')
             print("✅ All data sources loaded successfully")
@@ -207,7 +209,8 @@ class CompleteNLPDeliveryAnalyzer:
             'external_factors': ['recorded_at'],
             'warehouse_logs': ['picking_start', 'picking_end', 'dispatch_time'],
             'feedback': ['created_at'],
-            'fleet_logs': ['departure_time', 'arrival_time', 'created_at']
+            'fleet_logs': ['departure_time', 'arrival_time', 'created_at'],
+            'orders': ['order_date', 'promised_delivery_date', 'actual_delivery_date', 'created_at']
         }
 
         for table_name, columns in date_columns.items():
@@ -244,6 +247,27 @@ class CompleteNLPDeliveryAnalyzer:
             self.warehouses[['warehouse_id', 'warehouse_name', 'city', 'state']],
             on='warehouse_id', how='left', suffixes=('', '_warehouse')
         )
+
+        if hasattr(self, 'orders'):
+            order_columns = [
+                'order_id', 'client_id', 'status', 'failure_reason',
+                'order_date', 'actual_delivery_date', 'created_at', 'payment_mode', 'amount'
+            ]
+            available_order_columns = [col for col in order_columns if col in self.orders.columns]
+            if available_order_columns:
+                master = master.merge(
+                    self.orders[available_order_columns],
+                    on='order_id', how='left'
+                )
+
+        if hasattr(self, 'clients') and 'client_id' in master.columns:
+            client_columns = ['client_id', 'client_name']
+            available_client_columns = [col for col in client_columns if col in self.clients.columns]
+            if available_client_columns:
+                master = master.merge(
+                    self.clients[available_client_columns],
+                    on='client_id', how='left'
+                )
 
         # Calculate derived metrics
         master['picking_duration'] = (master['picking_end'] - master['picking_start']).dt.total_seconds() / 60
@@ -341,6 +365,22 @@ class CompleteNLPDeliveryAnalyzer:
             problematic_notes = [n for n in issue_patterns if any(keyword in n.lower() for keyword in ['issue', 'delay', 'problem', 'error', 'stock', 'system'])]
             if problematic_notes:
                 self.config['warehouse_notes_issues'] = problematic_notes
+
+        client_names = set()
+        if 'client_name' in self.master_data.columns:
+            client_names = set(
+                self.master_data['client_name']
+                .dropna()
+                .astype(str)
+                .str.strip()
+                .unique()
+            )
+
+        if client_names:
+            self.client_lookup = {name.lower(): name for name in client_names}
+            self.config['clients'] = sorted(list(client_names))
+        else:
+            self.client_lookup = {}
         
         logger.info(f"Discovered {len(self.config['cities'])} cities, {len(self.config['warehouse_patterns'])} warehouses")
         logger.info(f"Discovered {len(self.config['weather_issues'])} weather issues, {len(self.config['traffic_issues'])} traffic issues")
@@ -372,7 +412,8 @@ class CompleteNLPDeliveryAnalyzer:
             'operations': [
                 'warehouse', 'driver', 'fleet', 'delivery', 'logistics', 'supply chain',
                 'picking', 'dispatch', 'route', 'traffic', 'weather', 'capacity'
-            ]
+            ],
+            'clients': self.config.get('clients', [])
         }
         
         # Enhanced intent classification patterns with comprehensive vocabulary
@@ -726,34 +767,63 @@ class CompleteNLPDeliveryAnalyzer:
             'warehouses': [],
             'time_periods': [],
             'metrics': [],
-            'operations': []
+            'operations': [],
+            'clients': []
         }
-        
-        # More precise entity extraction with improved city matching
+
+        def add_entity(entity_type, raw_value):
+            if not raw_value:
+                return
+            if entity_type == 'clients':
+                canonical = self.client_lookup.get(raw_value.lower(), raw_value)
+                entities[entity_type].append(canonical)
+            else:
+                entities[entity_type].append(raw_value)
+
+        # More precise entity extraction with improved matching
         for entity_type, patterns in self.entity_patterns.items():
             for pattern in patterns:
-                if pattern in query_lower:
-                    entities[entity_type].append(pattern)
-                elif entity_type != 'warehouses' and entity_type != 'time_periods' and fuzz.partial_ratio(pattern, query_lower) > self.config['fuzzy_match_threshold']:
-                    entities[entity_type].append(pattern)
-                elif entity_type == 'cities':
-                    # Special handling for city names - check if any word in the pattern matches query words
-                    pattern_words = pattern.split()
+                pattern_lower = pattern.lower()
+
+                if entity_type == 'clients':
+                    pattern_tokens = re.findall(r'\w+', pattern_lower)
+                    query_tokens = re.findall(r'\w+', query_lower)
+                    if pattern_tokens and all(token in query_tokens for token in pattern_tokens):
+                        add_entity(entity_type, pattern)
+                    continue
+
+                if entity_type == 'time_periods':
+                    pattern_tokens = re.findall(r'\w+', pattern_lower)
+                    query_tokens = re.findall(r'\w+', query_lower)
+                    if pattern_tokens and all(token in query_tokens for token in pattern_tokens):
+                        add_entity(entity_type, pattern)
+                    continue
+
+                if entity_type == 'warehouses':
+                    if pattern_lower in query_lower:
+                        add_entity(entity_type, pattern)
+                    continue
+
+                if pattern_lower in query_lower:
+                    add_entity(entity_type, pattern)
+                    continue
+
+                if entity_type == 'cities':
+                    pattern_words = pattern_lower.split()
                     query_words = query_lower.split()
                     for pattern_word in pattern_words:
-                        if pattern_word in query_words and len(pattern_word) > 3:  # Avoid short words like "new"
-                            entities[entity_type].append(pattern)
+                        if pattern_word in query_words and len(pattern_word) > 3:
+                            add_entity(entity_type, pattern)
                             break
-                elif entity_type == 'time_periods':
-                    # Special handling for time periods - exact word matching to avoid false positives
-                    # Only add if all words in pattern are found as complete words in query
-                    pattern_words = pattern.split()
-                    query_words = query_lower.split()
-                    if all(word in query_words for word in pattern_words):
-                        entities[entity_type].append(pattern)
+                    else:
+                        if fuzz.partial_ratio(pattern_lower, query_lower) > self.config['fuzzy_match_threshold']:
+                            add_entity(entity_type, pattern)
+                    continue
+
+                if fuzz.partial_ratio(pattern_lower, query_lower) > self.config['fuzzy_match_threshold']:
+                    add_entity(entity_type, pattern)
         
-        # Special warehouse detection with precise matching
-        import re
+    # Special warehouse detection with precise matching
         warehouse_pattern = r'warehouse\s+([a-z0-9]+)'
         warehouse_matches = re.findall(warehouse_pattern, query_lower)
         
@@ -798,6 +868,40 @@ class CompleteNLPDeliveryAnalyzer:
                     'score': score,
                     'patterns': matched_patterns
                 }
+
+        # Require strong capacity cues before considering capacity planning intent
+        if 'capacity_planning' in intent_scores:
+            capacity_keywords = {
+                'onboard',
+                'onboarding',
+                'extra',
+                'additional',
+                'capacity',
+                'volume',
+                'increase',
+                'increasing',
+                'scale',
+                'scaling',
+                'add ',
+                'adding',
+                'expand',
+                'expansion',
+                'growth',
+                'demand',
+                'load',
+                'surge',
+                'overflow'
+            }
+            capacity_phrases = [
+                'more orders',
+                'extra orders',
+                'additional orders',
+                'new orders'
+            ]
+            has_capacity_keyword = any(keyword in query_lower for keyword in capacity_keywords)
+            has_capacity_phrase = any(phrase in query_lower for phrase in capacity_phrases)
+            if not (has_capacity_keyword or has_capacity_phrase):
+                intent_scores.pop('capacity_planning')
         
         # Special case: prioritize comparison when both comparison and causation keywords are present
         if 'comparison' in intent_scores and 'causation' in intent_scores:
@@ -883,48 +987,25 @@ class CompleteNLPDeliveryAnalyzer:
 
     def handle_analysis_query(self, entities):
         """Delivers a health report (counts, averages, tips) optionally filtered by city/time/warehouse."""
-        data = self.master_data.copy()
-        original_count = len(data)
-        
-        # Filter by entities
-        if entities['cities']:
-            # Use fuzzy matching for city names
-            matched_cities = []
-            for city in entities['cities']:
-                city_matches = process.extractBests(city, data['city'].unique(), limit=3, score_cutoff=70)
-                matched_cities.extend([match[0] for match in city_matches])
-            
-            if matched_cities:
-                data = data[data['city'].isin(matched_cities)]
-        
-        # Apply warehouse filtering with precise detection
-        if entities['warehouses']:
-            for warehouse in entities['warehouses']:
-                # Use regex to detect warehouse patterns
-                warehouse_pattern = r'warehouse\s*([a-zA-Z0-9]+)|([a-zA-Z])\s*warehouse|warehouse\s*([a-zA-Z])'
-                match = re.search(warehouse_pattern, warehouse.lower())
-                
-                if match:
-                    # Extract warehouse identifier
-                    warehouse_id = match.group(1) or match.group(2) or match.group(3)
-                    if warehouse_id:
-                        # Map letters to numbers (A=1, B=2, etc.)
-                        if warehouse_id.isalpha():
-                            warehouse_num = ord(warehouse_id.upper()) - ord('A') + 1
-                        else:
-                            warehouse_num = int(warehouse_id) if warehouse_id.isdigit() else None
-                        
-                        if warehouse_num:
-                            data = data[data['warehouse_id'] == warehouse_num]
-        
-        # Apply time period filtering
-        if entities['time_periods']:
-            data = self.apply_time_filter(data, entities['time_periods'])
-        
-        # Show filtering results
+        original_count = len(self.master_data)
+        data = self._filter_data_by_entities(entities).copy()
+
+        if entities.get('clients') and 'client_name' in data.columns and not data.empty:
+            actual_clients = sorted(data['client_name'].dropna().unique().tolist())
+            if actual_clients:
+                print(f"👥 Filtered to clients: {actual_clients}")
+
+        if entities.get('cities') and 'city' in data.columns and not data.empty:
+            actual_cities = sorted(data['city'].dropna().unique().tolist())
+            if actual_cities:
+                print(f"🌆 Filtered to cities: {actual_cities}")
+
         if len(data) != original_count:
             print(f"📊 Filter applied: {len(data)} records from {original_count} total")
-        
+
+        if len(data) == 0:
+            return f"No data found for the specified filters. Original dataset: {original_count:,} records."
+
         # Generate comprehensive analysis
         analysis = {
             'total_orders': len(data),
@@ -936,36 +1017,36 @@ class CompleteNLPDeliveryAnalyzer:
         
         # Generate dynamic header based on actual filters
         header_parts = []
-        
-        # Add city information
-        if entities.get('cities'):
-            # Get the actual city names that were filtered (title case)
-            if len(data) < len(self.master_data):
-                actual_cities = sorted(data['city'].unique()) if len(data) > 0 else []
-                if actual_cities:
-                    cities_str = ', '.join(actual_cities)
-                    header_parts.append(f"{cities_str} Analysis")
-                else:
-                    cities_str = ', '.join([city.title() for city in entities['cities']])
-                    header_parts.append(f"{cities_str} Analysis")
-            else:
-                cities_str = ', '.join([city.title() for city in entities['cities']])
-                header_parts.append(f"{cities_str} Analysis")
-        else:
-            header_parts.append("Delivery Analysis")
-        
-        # Add time period information
-        if entities.get('time_periods'):
-            time_str = ', '.join(entities['time_periods'])
-            header_parts.append(f"({time_str})")
-        
-        # Add warehouse information if applicable
-        if entities.get('warehouses'):
-            warehouse_str = ', '.join(entities['warehouses'])
-            header_parts.append(f"- {warehouse_str}")
 
-        # Create response with dynamic header
-        response = f"{' '.join(header_parts)}: Analysis of {analysis['total_orders']:,} orders\n"
+        if entities.get('clients'):
+            if 'client_name' in data.columns and not data.empty:
+                actual_clients = sorted(data['client_name'].dropna().unique().tolist())
+            else:
+                actual_clients = []
+            client_display = actual_clients if actual_clients else entities['clients']
+            header_parts.append(f"Client {', '.join(client_display)}")
+
+        if entities.get('cities'):
+            if 'city' in data.columns and not data.empty:
+                actual_cities = sorted(data['city'].dropna().unique().tolist())
+            else:
+                actual_cities = []
+            city_display = actual_cities if actual_cities else [city.title() for city in entities['cities']]
+            header_parts.append(f"City: {', '.join(city_display)}")
+
+        if entities.get('time_periods'):
+            formatted_periods = [term.title() if term.islower() else term for term in entities['time_periods']]
+            header_parts.append(f"Timeframe: {', '.join(formatted_periods)}")
+
+        if entities.get('warehouses'):
+            header_parts.append(f"Warehouses: {', '.join(entities['warehouses'])}")
+
+        if not header_parts:
+            header_parts.append("Delivery Analysis")
+
+        header_title = " | ".join(header_parts)
+
+        response = f"{header_title}: Analysis of {analysis['total_orders']:,} orders\n"
         response += f"Key Metrics:\n"
         response += f"  - Total Orders: {analysis['total_orders']:,}\n"
         response += f"  - Orders With Issues: {analysis['orders_with_issues']:,}\n"
@@ -1159,52 +1240,32 @@ class CompleteNLPDeliveryAnalyzer:
 
     def handle_causation_query(self, entities):
         """Drills into filtered data to explain why failures happened (weather, traffic, operations)."""
-        data = self.master_data.copy()
-        original_count = len(data)
-        
-        # Apply warehouse filtering
-        if entities.get('warehouses'):
-            warehouse_names = entities['warehouses']
-            # Map warehouse names to IDs
-            warehouse_mapping = {}
-            for _, row in self.warehouses.iterrows():
-                warehouse_mapping[row['warehouse_name'].lower()] = row['warehouse_id']
-            
-            warehouse_ids = []
-            for name in warehouse_names:
-                if name in warehouse_mapping:
-                    warehouse_ids.append(warehouse_mapping[name])
-            
-            if warehouse_ids:
-                data = data[data['warehouse_id'].isin(warehouse_ids)]
-                print(f"� Filtered to warehouses: {warehouse_names}")
-        
-        # Apply time period filtering
-        if entities.get('time_periods'):
-            time_period = entities['time_periods'][0]  # Use first time period
-            data = self.apply_time_filter(data, time_period)
-        
-        # Apply city filtering
-        if entities.get('cities'):
-            matched_cities = []
-            for city in entities['cities']:
-                city_matches = process.extractBests(city, data['city'].unique(), limit=3, score_cutoff=70)
-                matched_cities.extend([match[0] for match in city_matches])
-            
-            if matched_cities:
-                data = data[data['city'].isin(matched_cities)]
-                print(f"� Filtered to cities: {matched_cities}")
-        
-        # Show filtering results
+        original_count = len(self.master_data)
+        data = self._filter_data_by_entities(entities).copy()
+
+        actual_clients = []
+        if 'client_name' in data.columns and not data.empty:
+            actual_clients = sorted(data['client_name'].dropna().unique().tolist())
+
+        actual_cities = []
+        if 'city' in data.columns and not data.empty:
+            actual_cities = sorted(data['city'].dropna().unique().tolist())
+
+        if entities.get('clients') and actual_clients:
+            print(f"👥 Filtered to clients: {actual_clients}")
+
+        if entities.get('cities') and actual_cities:
+            print(f"🌆 Filtered to cities: {actual_cities}")
+
         if len(data) != original_count:
             print(f"📊 Filter applied: {len(data)} records from {original_count} total")
-        
+
         if len(data) == 0:
             return f"No data found for the specified filters. Original dataset: {original_count:,} records."
-        
+
         # Analyze primary causes of issues
         issue_data = data[data['has_issue'] == True]
-        
+
         if len(issue_data) == 0:
             return f"No issues found in the filtered data ({len(data)} total orders from {original_count:,} original records)."
         
@@ -1232,35 +1293,28 @@ class CompleteNLPDeliveryAnalyzer:
         
         # Generate dynamic header based on actual filters
         header_parts = []
-        
-        # Add city information
+
+        if entities.get('clients'):
+            client_display = actual_clients if actual_clients else entities['clients']
+            header_parts.append(f"Client {', '.join(client_display)}")
+
         if entities.get('cities'):
-            # Get the actual city names that were filtered (title case)
-            if len(data) < len(self.master_data):
-                actual_cities = sorted(data['city'].unique()) if len(data) > 0 else []
-                if actual_cities:
-                    cities_str = ', '.join(actual_cities)
-                    header_parts.append(f"{cities_str} Analysis")
-                else:
-                    cities_str = ', '.join([city.title() for city in entities['cities']])
-                    header_parts.append(f"{cities_str} Analysis")
-            else:
-                cities_str = ', '.join([city.title() for city in entities['cities']])
-                header_parts.append(f"{cities_str} Analysis")
-        else:
-            header_parts.append("Delivery Analysis")
-        
-        # Add time period information
+            city_display = actual_cities if actual_cities else [city.title() for city in entities['cities']]
+            header_parts.append(f"City: {', '.join(city_display)}")
+
         if entities.get('time_periods'):
-            time_str = ', '.join(entities['time_periods'])
-            header_parts.append(f"({time_str})")
-        
-        # Add warehouse information if applicable
+            formatted_periods = [term.title() if term.islower() else term for term in entities['time_periods']]
+            header_parts.append(f"Timeframe: {', '.join(formatted_periods)}")
+
         if entities.get('warehouses'):
-            warehouse_str = ', '.join(entities['warehouses'])
-            header_parts.append(f"- {warehouse_str}")
-        
-        response = f"{' '.join(header_parts)}:\n"
+            header_parts.append(f"Warehouses: {', '.join(entities['warehouses'])}")
+
+        if not header_parts:
+            header_parts.append("Delivery Analysis")
+
+        header_title = " | ".join(header_parts)
+
+        response = f"{header_title}:\n"
         response += f"  • Total Orders: {len(data):,}\n"
         response += f"  • Orders with Issues: {total_issues:,} ({issue_rate:.1f}%)\n"
         response += f"  • Primary Cause: {primary_cause[0].lower()}\n\n"
@@ -1268,6 +1322,14 @@ class CompleteNLPDeliveryAnalyzer:
         for cause, count in cause_counts.items():
             percentage = (count / total_issues) * 100 if total_issues > 0 else 0
             response += f"  - {cause}: {count:,} ({percentage:.1f}% of issues)\n"
+
+        if 'event_type' in issue_data.columns and issue_data['event_type'].notna().any():
+            event_counts = issue_data['event_type'].fillna('Unspecified').str.title().value_counts()
+            if not event_counts.empty:
+                response += f"\nEvent Correlation:\n"
+                for event, count in event_counts.head(3).items():
+                    percentage = (count / total_issues) * 100 if total_issues > 0 else 0
+                    response += f"  - {event}: {count:,} orders ({percentage:.1f}% of issues)\n"
         
         # Add dynamic insights based on actual data
         if total_issues > 0:
@@ -1278,16 +1340,26 @@ class CompleteNLPDeliveryAnalyzer:
                 response += f"  • Traffic congestion is the primary challenge\n"
             
             # Dynamic insight based on actual filters
-            location_str = entities.get('cities', ['the analyzed area'])[0] if entities.get('cities') else 'the analyzed area'
-            time_str = entities.get('time_periods', ['the analyzed period'])[0] if entities.get('time_periods') else 'the analyzed period'
-            response += f"  • {issue_rate:.1f}% of orders in {location_str} had delivery issues in {time_str}\n"
+            location_components = []
+            if entities.get('clients'):
+                client_component = actual_clients if actual_clients else entities['clients']
+                location_components.append(f"Client {', '.join(client_component)}")
+            if entities.get('cities'):
+                city_component = actual_cities if actual_cities else [city.title() for city in entities['cities']]
+                location_components.append(', '.join(city_component))
+            location_label = ' & '.join(location_components) if location_components else 'the analyzed area'
+
+            period_components = [term.title() if term.islower() else term for term in entities.get('time_periods', [])]
+            time_label = period_components[0] if period_components else 'the analyzed period'
+
+            response += f"  • {issue_rate:.1f}% of orders for {location_label} had delivery issues in {time_label}\n"
             
             # Recommendations - Enhanced with festival-specific advice
             response += f"\n💡 Recommendations:\n"
             
             # Check if this is a festival period analysis
             festival_terms = ['festival', 'holiday', 'peak season', 'diwali', 'christmas', 'new year', 'eid']
-            is_festival_query = any(term in time_str.lower() for term in festival_terms) if time_str != 'the analyzed period' else False
+            is_festival_query = any(term in time_label.lower() for term in festival_terms) if time_label != 'the analyzed period' else False
             
             if is_festival_query:
                 # Festival-specific recommendations
@@ -1436,7 +1508,6 @@ class CompleteNLPDeliveryAnalyzer:
     def apply_time_filter(self, data, time_periods):
         """Keeps only the rows that match the requested time windows (yesterday, last month, festivals, etc.)."""
         from datetime import datetime, timedelta
-        import calendar
         
         # Handle list of time periods
         if isinstance(time_periods, list):
@@ -1449,16 +1520,22 @@ class CompleteNLPDeliveryAnalyzer:
     
     def _apply_single_time_filter(self, data, time_period):
         """Implements the actual date math for one time phrase before handing data back."""
-        # Convert to datetime if needed
-        if 'picking_start' in data.columns:
-            data['picking_start'] = pd.to_datetime(data['picking_start'])
-            date_col = 'picking_start'
-        else:
+        if 'picking_start' not in data.columns:
             return data
-        
+
+        data = data.copy()
+
+        if not pd.api.types.is_datetime64_any_dtype(data['picking_start']):
+            data['picking_start'] = pd.to_datetime(data['picking_start'], errors='coerce')
+
+        date_col = 'picking_start'
         current_date = datetime.now()
-        time_period_lower = time_period.lower()
-        
+        time_period_lower = time_period.lower() if isinstance(time_period, str) else ''
+
+        event_types = None
+        if 'event_type' in data.columns:
+            event_types = data['event_type'].fillna('').astype(str).str.lower()
+
         # Handle month names
         month_mapping = {
             'january': 1, 'jan': 1, 'february': 2, 'feb': 2, 'march': 3, 'mar': 3,
@@ -1466,7 +1543,18 @@ class CompleteNLPDeliveryAnalyzer:
             'july': 7, 'jul': 7, 'august': 8, 'aug': 8, 'september': 9, 'sep': 9,
             'october': 10, 'oct': 10, 'november': 11, 'nov': 11, 'december': 12, 'dec': 12
         }
-        
+
+        def filter_by_event_labels(description, labels):
+            if event_types is None:
+                return None
+            mask = event_types.isin(labels) if isinstance(labels, set) else event_types.str.contains(labels)
+            if not mask.any():
+                return None
+            subset = data.loc[mask].copy()
+            print(f"🎊 Filtering {description} via event tags: {len(subset)} records")
+            print(f"📊 Time filter applied: {len(subset)} records from {len(data)} total")
+            return subset
+
         try:
             if time_period_lower in month_mapping:
                 month_num = month_mapping[time_period_lower]
@@ -1505,24 +1593,69 @@ class CompleteNLPDeliveryAnalyzer:
                 filtered_data = data[(data[date_col] >= start_date) & (data[date_col] <= end_date)]
                 print(f"📊 Time filter applied: {len(filtered_data)} records from {len(data)} total")
                 return filtered_data
-            elif any(festival in time_period_lower for festival in ['festival period', 'festival season', 'holiday period', 'holiday season', 'peak season']):
-                # For festival periods, analyze peak delivery periods (typically October-December for Indian festivals)
-                # and high-volume periods that stress the system
-                
-                # Define festival months (October-December for major Indian festivals)
-                festival_months = [10, 11, 12]  # Oct, Nov, Dec
-                
-                # Filter data for festival months across available years
+            elif any(keyword in time_period_lower for keyword in ['festival period', 'festival season', 'festive period', 'festive season']) or 'festival' in time_period_lower:
+                filtered_data = filter_by_event_labels('festival period', {'festival'})
+                if filtered_data is not None:
+                    return filtered_data
+
+                festival_months = []
+                if event_types is not None:
+                    festival_months = (
+                        data.loc[event_types == 'festival', date_col]
+                        .dt.month.dropna().unique().tolist()
+                    )
+
+                if not festival_months:
+                    festival_months = [10, 11, 12]
+
                 filtered_data = data[data[date_col].dt.month.isin(festival_months)]
-                
-                # If no data in festival months, look at peak volume periods
+
                 if len(filtered_data) == 0:
-                    # Identify peak volume periods by finding months with highest order counts
                     monthly_counts = data.groupby(data[date_col].dt.month).size()
                     top_months = monthly_counts.nlargest(3).index.tolist()
                     filtered_data = data[data[date_col].dt.month.isin(top_months)]
-                
-                print(f"🎊 Filtering festival period: {len(filtered_data)} records from peak delivery periods")
+                    print(f"🎊 No tagged festival events found; using top peak months {top_months}")
+                else:
+                    print(f"🎊 Filtering festival period by months {festival_months}")
+
+                print(f"📊 Time filter applied: {len(filtered_data)} records from {len(data)} total")
+                return filtered_data
+            elif any(keyword in time_period_lower for keyword in ['holiday period', 'holiday season']):
+                filtered_data = filter_by_event_labels('holiday period', {'holiday'})
+                if filtered_data is not None:
+                    return filtered_data
+
+                holiday_months = []
+                if event_types is not None:
+                    holiday_months = (
+                        data.loc[event_types == 'holiday', date_col]
+                        .dt.month.dropna().unique().tolist()
+                    )
+
+                if not holiday_months:
+                    holiday_months = [11, 12]
+
+                filtered_data = data[data[date_col].dt.month.isin(holiday_months)]
+
+                if len(filtered_data) == 0:
+                    monthly_counts = data.groupby(data[date_col].dt.month).size()
+                    top_months = monthly_counts.nlargest(2).index.tolist()
+                    filtered_data = data[data[date_col].dt.month.isin(top_months)]
+                    print(f"🎄 No tagged holiday events found; using peak months {top_months}")
+                else:
+                    print(f"🎄 Filtering holiday period by months {holiday_months}")
+
+                print(f"📊 Time filter applied: {len(filtered_data)} records from {len(data)} total")
+                return filtered_data
+            elif 'peak season' in time_period_lower or 'peak period' in time_period_lower:
+                filtered_data = filter_by_event_labels('peak season', {'festival', 'holiday'})
+                if filtered_data is not None:
+                    return filtered_data
+
+                monthly_counts = data.groupby(data[date_col].dt.month).size()
+                top_months = monthly_counts.nlargest(3).index.tolist()
+                filtered_data = data[data[date_col].dt.month.isin(top_months)]
+                print(f"📈 Using data from top peak months {top_months}")
                 print(f"📊 Time filter applied: {len(filtered_data)} records from {len(data)} total")
                 return filtered_data
             elif any(festival in time_period_lower for festival in ['diwali', 'christmas', 'new year', 'eid', 'holi', 'dussehra', 'navratri']):
@@ -1603,6 +1736,19 @@ class CompleteNLPDeliveryAnalyzer:
                         matched_cities.append(match[0])
             if matched_cities:
                 filtered = filtered[filtered['city'].isin(matched_cities)]
+
+        if entities.get('clients') and 'client_name' in filtered.columns:
+            available_clients = filtered['client_name'].dropna().unique().tolist()
+            matched_clients = []
+            for client in entities['clients']:
+                if client in available_clients:
+                    matched_clients.append(client)
+                else:
+                    match = process.extractOne(client, available_clients, scorer=fuzz.token_set_ratio)
+                    if match and match[1] >= self.config['fuzzy_match_threshold']:
+                        matched_clients.append(match[0])
+            if matched_clients:
+                filtered = filtered[filtered['client_name'].isin(matched_clients)]
 
         # Filter by warehouse identifiers extracted from the query
         if entities.get('warehouses') and 'warehouse_id' in filtered.columns:
