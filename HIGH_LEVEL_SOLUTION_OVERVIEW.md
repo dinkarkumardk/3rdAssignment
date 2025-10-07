@@ -39,13 +39,44 @@ This same sequence can be narrated in the video while stepping through the code:
 | Caching & Reporting | cachetools (TTLCache), Python `json` module for exports. |
 | Delivery Interfaces | Python CLI scripts using standard library (`argparse`, `time`, `datetime`).
 
-## 4. Video Coverage Checklist
 
-- Start from `assignment_demonstration()` to state the system’s purpose.
-- Run at least two queries (e.g., a causation query and a prediction query) and, for one of them, narrate the journey through the components listed above.
-- Point out where the ML insight summary appears (only for relevant intents after recent changes).
-- If you incorporate the automated suite, mention its role in regression coverage.
 
-## 5. LLM Usage
-
-No external LLM is invoked in this solution. All understanding and responses come from deterministic Python logic and classical ML models. If an LLM is introduced later, document the system prompt and user prompt alongside the affected component.
+    ┌─────────────────────────────────────────────────────────────┐
+    │                 NLP QUERY INTERFACE                         │
+    │  "Why were deliveries delayed in Delhi yesterday?"          │
+    └─────────────────────┬───────────────────────────────────────┘
+                          │
+    ┌─────────────────────▼───────────────────────────────────────┐
+    │             INTELLIGENT QUERY PROCESSOR                     │
+    │  • Entity Extraction (Cities, Time, Clients)               │
+    │  • Intent Classification (Analysis, Comparison, Prediction) │
+    │  • Context Understanding with Fuzzy Matching               │
+    └─────────────────────┬───────────────────────────────────────┘
+                          │
+    ┌─────────────────────▼───────────────────────────────────────┐
+    │              MULTI-DOMAIN DATA ENGINE                       │
+    │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │
+    │  │ Order Logs  │ │ Fleet Data  │ │ Warehouse   │           │
+    │  │   25K+      │ │ GPS Traces  │ │  Records    │           │
+    │  └─────────────┘ └─────────────┘ └─────────────┘           │
+    │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │
+    │  │ Customer    │ │ Weather/    │ │ External    │           │
+    │  │ Feedback    │ │ Traffic     │ │ Factors     │           │
+    │  └─────────────┘ └─────────────┘ └─────────────┘           │
+    └─────────────────────┬───────────────────────────────────────┘
+                          │
+    ┌─────────────────────▼───────────────────────────────────────┐
+    │            CORRELATION & ANALYSIS ENGINE                    │
+    │  • Automated Event Correlation                              │
+    │  • Root Cause Identification                                │
+    │  • Pattern Recognition (ML-Powered)                         │
+    │  • Anomaly Detection                                        │
+    └─────────────────────┬───────────────────────────────────────┘
+                          │
+    ┌─────────────────────▼───────────────────────────────────────┐
+    │           BUSINESS NARRATIVE GENERATOR                      │
+    │  • Human-Readable Explanations                              │
+    │  • Actionable Recommendations                               │
+    │  • Executive Summaries                                      │
+    │  • Performance Metrics                                      │
+    └─────────────────────────────────────────────────────────────┘
