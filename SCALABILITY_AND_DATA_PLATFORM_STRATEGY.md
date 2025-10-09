@@ -28,23 +28,41 @@ The production design keeps the same logical steps but moves the heavy lifting t
 
 ## 2. Single baseline architecture we can use from day one
 
-```
-Sources (OMS, WMS, driver apps, feedback, weather)
-	│            – reason: keep upstream systems untouched; we only read exports/streams
-	▼
-Lightweight connectors / ingestion jobs (Airbyte or managed cloud copy)
-	│            – reason: managed connectors cut build time and give retry/monitoring out of the box
-	▼
-Raw zone in Amazon S3 – Parquet/Delta files partitioned by date/client
-	│            – reason: S3 is the cheapest durable tier; partitions keep scans fast
-	│    Catalog: AWS Glue (single source of table truth)
-	▼
-Curated tables built with a single autoscaling Databricks Serverless SQL/Spark workspace
-	│            – reason: same engine handles ETL, analytics, and ML without separate clusters
-	├──> Serverless SQL endpoint for dashboards + NLP API queries (shared, governed access)
-	└──> ML training + batch scoring jobs (Spark + MLflow, output back to curated tables)
+```mermaid
+flowchart TB
+	subgraph Upstream Sources
+		OMS[OMS]
+		WMS[WMS]
+		Driver[Driver Apps]
+		Feedback[Feedback]
+		Weather[Weather Feeds]
+	end
 
-Redis/ElastiCache in front of the NLP service stores hot query responses so repeat questions don’t re-run Spark jobs, cutting both latency and consumption-based charges.
+	Ingest["Managed connectors / ingestion jobs\n(Airbyte, cloud copy)"]
+	RawS3["Raw zone on Amazon S3\n(Parquet/Delta, partitioned)"]
+	Glue[(AWS Glue Catalog)]
+
+	subgraph Databricks Workspace
+		ETL["Autoscaling Serverless\nSQL/Spark jobs"]
+		SQLAPI["Serverless SQL endpoint\n(Dashboards + NLP API)"]
+		ML["ML training & batch scoring\n(Spark + MLflow)"]
+	end
+
+	Redis[(Redis / ElastiCache)]
+
+	OMS --> Ingest
+	WMS --> Ingest
+	Driver --> Ingest
+	Feedback --> Ingest
+	Weather --> Ingest
+
+	Ingest --> RawS3
+	RawS3 --- Glue
+	RawS3 --> ETL
+	ETL --> SQLAPI
+	ETL --> ML
+	SQLAPI --> Redis
+	Redis -. cached responses .-> SQLAPI
 ```
 
 ### Making data updates simple (no more CSV uploads)
@@ -54,6 +72,27 @@ Redis/ElastiCache in front of the NLP service stores hot query responses so repe
 - **Pipelines stay in sync automatically:** Airbyte (or AWS DMS) streams those operational tables into the raw S3 zone every few minutes. The same Spark jobs then rebuild curated Delta tables, so analytics and NLP see the new data without manual steps.
 - **Governance improves:** Every change is timestamped, attributed to a user account, and can be rolled back. Validation rules catch typos before they hit analytics, and we can expose approval workflows if needed.
 - **Cost stays controlled:** The UI tooling is pay-per-seat, Aurora Serverless scales to zero when idle, and incremental CDC jobs move only the new rows—far cheaper than full CSV reloads.
+
+```mermaid
+flowchart LR
+	UI["Ops data-entry UI\n(Retool / Streamlit / Amplify)"]
+	Auth["IAM / SSO"]
+	Aurora[("Aurora Serverless\n(PostgreSQL)")] 
+	Dynamo[("DynamoDB (optional)")]
+	CDC["Change data capture\n(Airbyte / AWS DMS)"]
+	RawS3["Raw S3 Delta tables"]
+	ETL["Databricks ETL"]
+	Curated["Curated Delta tables"]
+	Consumers["Dashboards / NLP / ML"]
+
+	UI -->|Validated writes| Aurora
+	UI -->|Validated writes| Dynamo
+	UI --> Auth
+	Aurora --> CDC
+	Dynamo --> CDC
+	CDC --> RawS3
+	RawS3 --> ETL --> Curated --> Consumers
+```
 
 Why this works:
 1. **One stack to learn:** Databricks Serverless is cheap to keep idle yet scales automatically, so we don’t redeploy anything when traffic or data grows.
@@ -67,6 +106,30 @@ We avoid relying on PostgreSQL for massive datasets because its performance drop
 ---
 
 ## 3. Data flow in production (keeps logic the same)
+
+```mermaid
+sequenceDiagram
+	participant Src as Source systems
+	participant Ingest as Ingestion jobs
+	participant Raw as Raw S3 (Delta)
+	participant DQ as Data Quality
+	participant Curated as Curated tables
+	participant SQL as SQL endpoint
+	participant NLP as NLP service
+	participant ML as ML jobs
+	participant Redis as Redis cache
+
+	Src->>Ingest: Export new records
+	Ingest->>Raw: Append partitioned Parquet/Delta files
+	Raw->>DQ: Trigger Great Expectations suite
+	DQ->>Curated: Write cleansed/derived tables
+	Curated->>SQL: Publish governed access
+	SQL->>NLP: Parameterized queries
+	NLP->>Redis: Cache hot responses
+	Redis->>NLP: Serve repeats instantly
+	Curated->>ML: Train & score models (MLflow tracked)
+	ML->>Curated: Persist predictions/features
+```
 
 1. **Ingestion** – Scheduled jobs copy new orders, drivers, feedback, etc. into the raw Parquet tables (keeps upstream systems decoupled and guarantees every run starts from the same source). For the first release this can run hourly or nightly; streaming can be enabled later without changing storage.
 2. **Curate & enrich** – A single notebook/job (Spark SQL) reproduces what `create_unified_dataset` does today: joins, feature calculations, issue flags (so analysts and ML get the exact same derived metrics the prototype produced).
