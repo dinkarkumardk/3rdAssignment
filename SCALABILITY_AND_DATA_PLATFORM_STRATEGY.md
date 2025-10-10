@@ -38,13 +38,13 @@ flowchart TB
 		Weather[Weather Feeds]
 	end
 
-	Ingest["Managed connectors\n(Airbyte / cloud copy)"]
-	Landing["Amazon S3 landing zone\n(Parquet/Delta raw)"]
-	Cleaning["Data cleaning notebooks\n(Spark SQL validations)"]
-	ETL["ETL & feature building\n(Serverless Databricks jobs)"]
-	DataWarehouse["Serverless SQL data warehouse\n(Governed Delta tables)"]
-	ML["ML training & scoring\n(Spark + MLflow)"]
-	Dashboards["Dashboards / APIs\n(via SQL endpoint)"]
+	Ingest["Managed connectors<br/>(Airbyte / cloud copy)"]
+	Landing["Amazon S3 landing zone<br/>(Parquet/Delta raw)"]
+	Cleaning["Data cleaning notebooks<br/>(Spark SQL validations)"]
+	ETL["ETL & feature building<br/>(Serverless Databricks jobs)"]
+	DataWarehouse["Serverless SQL data warehouse<br/>(Governed Delta tables)"]
+	ML["ML training & scoring<br/>(Spark + MLflow)"]
+	Dashboards["Dashboards / APIs<br/>(via SQL endpoint)"]
 	Redis[(Redis / ElastiCache)]
 
 	Sources --> Ingest --> Landing
@@ -68,11 +68,11 @@ The flow is intentionally linear: data lands on S3, Spark-based cleaning noteboo
 
 ```mermaid
 flowchart LR
-	UI["Ops data-entry UI\n(Retool / Streamlit / Amplify)"]
+	UI["Ops data-entry UI<br/>(Retool / Streamlit / Amplify)"]
 	Auth["IAM / SSO"]
-	Aurora[("Aurora Serverless\n(PostgreSQL)")] 
+	Aurora[("Aurora Serverless<br/>(PostgreSQL)")] 
 	Dynamo[("DynamoDB (optional)")]
-	CDC["Change data capture\n(Airbyte / AWS DMS)"]
+	CDC["Change data capture<br/>(Airbyte / AWS DMS)"]
 	RawS3["Raw S3 Delta tables"]
 	ETL["Databricks ETL"]
 	Curated["Curated Delta tables"]
