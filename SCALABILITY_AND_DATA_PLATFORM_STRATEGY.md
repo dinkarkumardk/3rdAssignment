@@ -70,7 +70,7 @@ flowchart TB
 	DataWarehouseNode --- |Catalog| Glue
 
 	class OMS,WMS,Driver,Feedback,Weather source;
-	class Ingest,LandingNode Glue landing;
+	class Ingest,LandingNode landing;
 	class Cleaning,ETL,DataWarehouseNode processing;
 	class Dashboards,ML serving;
 	class Redis cache;
