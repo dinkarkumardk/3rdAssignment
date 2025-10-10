@@ -134,26 +134,26 @@ We avoid relying on PostgreSQL for massive datasets because its performance drop
 
 ```mermaid
 flowchart TB
-	subgraph Pipeline [Landing → Cleaning → ETL]
-	  direction TB
-	  Src([Source systems]) --> Ingest([Ingestion jobs])
-	  Ingest --> LandingNode[[S3 landing (raw Parquet/Delta)]]
-	  LandingNode --> Cleaning([Cleaning & Great Expectations])
-	  Cleaning --> ETL([ETL & Feature build])
-	  ETL --> DW[[SQL data warehouse (modeled Delta tables)]]
-	end
+    subgraph Pipeline [Landing - Cleaning - ETL]
+      direction TB
+      Src([Source systems]) --> Ingest([Ingestion jobs])
+      Ingest --> LandingNode([S3 landing - raw Parquet/Delta])
+      LandingNode --> Cleaning([Cleaning & Great Expectations])
+      Cleaning --> ETL([ETL & Feature build])
+      ETL --> DW([SQL data warehouse - modeled Delta tables])
+    end
 
 ```mermaid
 flowchart TB
-	subgraph Consumption [Warehouse → Consumers]
-	  direction TB
-	  DW[[SQL data warehouse (modeled Delta tables)]] --> Dash([Dashboards & APIs])
-	  DW --> NLP([NLP service])
-	  DW --> ML([ML jobs — MLflow])
-	  NLP --> Redis((Redis cache))
-	  Redis -. cached responses .-> NLP
-	  ML --> DW
-	end
+    subgraph Consumption [Warehouse to Consumers]
+      direction TB
+      DW([SQL data warehouse - modeled Delta tables]) --> Dash([Dashboards & APIs])
+      DW --> NLP([NLP service])
+      DW --> ML([ML jobs - MLflow])
+      NLP --> Redis((Redis cache))
+      Redis -. cached responses .-> NLP
+      ML --> DW
+    end
 ```
 
 1. **Ingestion to the landing zone** – Scheduled jobs copy new orders, drivers, feedback, etc. into raw Parquet/Delta folders on S3 (keeps upstream systems decoupled and guarantees every run starts from the same source). For the first release this can run hourly or nightly; streaming can be enabled later without changing storage.
