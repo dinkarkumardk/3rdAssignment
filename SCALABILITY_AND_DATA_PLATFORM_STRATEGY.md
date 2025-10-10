@@ -134,7 +134,13 @@ We avoid relying on PostgreSQL for massive datasets because its performance drop
 
 ```mermaid
 flowchart TB
-	%% Combined pipeline + consumption diagram (single Mermaid block for robust parsing)
+	%% Color defs to match earlier diagrams (high-contrast, white fill + colored strokes)
+	classDef source fill:#ffffff,stroke:#2f80ed,stroke-width:1px,color:#0b3d91,font-weight:700;
+	classDef landing fill:#ffffff,stroke:#27ae60,stroke-width:1px,color:#0a3d24,font-weight:700;
+	classDef processing fill:#ffffff,stroke:#f2994a,stroke-width:1px,color:#7a4a00,font-weight:700;
+	classDef serving fill:#ffffff,stroke:#6a5acd,stroke-width:1px,color:#2b0f6b,font-weight:700;
+	classDef cache fill:#ffffff,stroke:#ff4d4f,stroke-width:1px,color:#7a1f30,font-weight:700;
+
 	subgraph Pipeline
 		direction TB
 		Src[Source systems] --> Ingest[Ingestion jobs]
@@ -153,6 +159,14 @@ flowchart TB
 		Redis -. cached responses .-> NLP
 		ML --> DW
 	end
+
+	%% assign classes
+	class Src source;
+	class Ingest landing;
+	class Landing landing;
+	class Cleaning,ETL,DW processing;
+	class Dash,NLP,ML serving;
+	class Redis cache;
 ```
 
 1. **Ingestion to the landing zone** – Scheduled jobs copy new orders, drivers, feedback, etc. into raw Parquet/Delta folders on S3 (keeps upstream systems decoupled and guarantees every run starts from the same source). For the first release this can run hourly or nightly; streaming can be enabled later without changing storage.
