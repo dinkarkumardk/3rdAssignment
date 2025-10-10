@@ -29,31 +29,56 @@ The production design keeps the same logical steps but moves the heavy lifting t
 ## 2. Single baseline architecture we can use from day one
 
 ```mermaid
-flowchart TB
-	subgraph Sources
-		OMS[OMS]
-		WMS[WMS]
-		Driver[Driver Apps]
-		Feedback[Feedback]
-		Weather[Weather Feeds]
+flowchart LR
+	classDef source fill:#e8f4ff,stroke:#4a90e2,stroke-width:1px,color:#0b3d91,font-weight:600;
+	classDef landing fill:#e8fff4,stroke:#34a853,stroke-width:1px,color:#0a3d24,font-weight:600;
+	classDef processing fill:#fff4e5,stroke:#f6a623,stroke-width:1px,color:#8a4b00,font-weight:600;
+	classDef serving fill:#f3e8ff,stroke:#9b51e0,stroke-width:1px,color:#3d0b91,font-weight:600;
+	classDef cache fill:#fdeff2,stroke:#eb5757,stroke-width:1px,color:#7a1f30,font-weight:600;
+
+	subgraph Upstream [Upstream systems]
+		direction TB
+		OMS([OMS])
+		WMS([WMS])
+		Driver([Driver apps])
+		Feedback([Feedback])
+		Weather([Weather feeds])
 	end
 
 	Ingest["Managed connectors<br/>(Airbyte / cloud copy)"]
-	Landing["Amazon S3 landing zone<br/>(Parquet/Delta raw)"]
+	Landing[["Amazon S3 landing zone<br/>(Parquet/Delta raw)"]]
 	Cleaning["Data cleaning notebooks<br/>(Spark SQL validations)"]
 	ETL["ETL & feature building<br/>(Serverless Databricks jobs)"]
-	DataWarehouse["Serverless SQL data warehouse<br/>(Governed Delta tables)"]
-	ML["ML training & scoring<br/>(Spark + MLflow)"]
+	DataWarehouse[["Serverless SQL data warehouse<br/>(Governed Delta tables)"]]
 	Dashboards["Dashboards / APIs<br/>(via SQL endpoint)"]
-	Redis[(Redis / ElastiCache)]
+	ML["ML training & scoring<br/>(Spark + MLflow)"]
+	Redis((Redis / ElastiCache))
+	Glue[(AWS Glue Catalog)]
 
-	Sources --> Ingest --> Landing
+	OMS --> Ingest
+	WMS --> Ingest
+	Driver --> Ingest
+	Feedback --> Ingest
+	Weather --> Ingest
+
+	Ingest --> Landing
 	Landing --> Cleaning --> ETL --> DataWarehouse
 	DataWarehouse --> Dashboards
 	DataWarehouse --> ML
 	Dashboards --> Redis
 	Redis -. cached responses .-> Dashboards
-	DataWarehouse --- |Catalog| Glue[(AWS Glue)]
+	DataWarehouse --- |Catalog| Glue
+
+	class OMS,WMS,Driver,Feedback,Weather source;
+	class Ingest landing;
+	class Landing landing;
+	class Cleaning processing;
+	class ETL processing;
+	class DataWarehouse processing;
+	class Dashboards serving;
+	class ML serving;
+	class Redis cache;
+	class Glue landing;
 ```
 
 The flow is intentionally linear: data lands on S3, Spark-based cleaning notebooks enforce quality gates, ETL notebooks shape trusted Delta tables inside the serverless SQL data warehouse, and every consumer—dashboards, APIs, NLP, and ML—pulls from that governed layer while Redis accelerates repeat lookups.
@@ -68,14 +93,20 @@ The flow is intentionally linear: data lands on S3, Spark-based cleaning noteboo
 
 ```mermaid
 flowchart LR
+	classDef ui fill:#f3e0ff,stroke:#a855f7,stroke-width:1px,color:#521a96,font-weight:600;
+	classDef auth fill:#e0f2ff,stroke:#38bdf8,stroke-width:1px,color:#0f3057,font-weight:600;
+	classDef opstore fill:#e6ffe6,stroke:#22c55e,stroke-width:1px,color:#064e3b,font-weight:600;
+	classDef pipeline fill:#fff4e5,stroke:#f97316,stroke-width:1px,color:#7c2d12,font-weight:600;
+	classDef consumer fill:#e5f0ff,stroke:#6366f1,stroke-width:1px,color:#312e81,font-weight:600;
+
 	UI["Ops data-entry UI<br/>(Retool / Streamlit / Amplify)"]
-	Auth["IAM / SSO"]
+	Auth((IAM / SSO))
 	Aurora[("Aurora Serverless<br/>(PostgreSQL)")] 
-	Dynamo[("DynamoDB (optional)")]
+	Dynamo[("DynamoDB<br/>(optional)")]
 	CDC["Change data capture<br/>(Airbyte / AWS DMS)"]
-	RawS3["Raw S3 Delta tables"]
-	ETL["Databricks ETL"]
-	Curated["Curated Delta tables"]
+	RawS3[["Raw S3 Delta tables"]]
+	ETL["Databricks cleaning & ETL"]
+	Curated[["Curated Delta tables<br/>(SQL data warehouse)"]]
 	Consumers["Dashboards / NLP / ML"]
 
 	UI -->|Validated writes| Aurora
@@ -85,6 +116,12 @@ flowchart LR
 	Dynamo --> CDC
 	CDC --> RawS3
 	RawS3 --> ETL --> Curated --> Consumers
+
+	class UI ui;
+	class Auth auth;
+	class Aurora,Dynamo opstore;
+	class CDC,RawS3,ETL pipeline;
+	class Curated,Consumers consumer;
 ```
 
 Why this works:
@@ -102,16 +139,24 @@ We avoid relying on PostgreSQL for massive datasets because its performance drop
 
 ```mermaid
 sequenceDiagram
-	participant Src as Source systems
-	participant Ingest as Ingestion jobs
-	participant S3 as S3 landing zone
-	participant Clean as Cleaning & DQ (Spark)
-	participant ETL as ETL / Feature build
-	participant DW as Serverless SQL data warehouse
-	participant NLP as NLP service
-	participant Dash as Dashboards
-	participant ML as ML jobs
-	participant Redis as Redis cache
+	box rgb(232,244,255) Upstream ingestion
+		participant Src as Source systems
+		participant Ingest as Ingestion jobs
+	end
+	box rgb(230,255,244) Landing & quality
+		participant S3 as S3 landing zone
+		participant Clean as Cleaning & DQ (Spark)
+	end
+	box rgb(255,244,229) Transformation & warehouse
+		participant ETL as ETL / Feature build
+		participant DW as Serverless SQL data warehouse
+	end
+	box rgb(243,232,255) Consumption layers
+		participant NLP as NLP service
+		participant Dash as Dashboards
+		participant ML as ML jobs
+		participant Redis as Redis cache
+	end
 
 	Src->>Ingest: Export new records
 	Ingest->>S3: Append raw Parquet/Delta files
